@@ -1,0 +1,173 @@
+
+# script to simulate starting tree with proper node constraints
+
+
+########## Read in data
+
+filenames = v("alignments/supermatrix_1.fasta") 
+
+n_partitions = filenames.size()
+
+for (i in 1:n_partitions) {
+    data[i] = readDiscreteCharacterData(filenames[i])
+    n_sites[i] <- data[i].nchar()
+}
+
+# get variables from alignments
+n_species = data[1].ntaxa()
+names = data[1].names()
+n_branches = 2 * n_species - 2
+
+# topology constraints for the internal node calibrations:
+
+# the oldest fossils in Lythracea are
+# Lythrum/Peplis 81.5 Ma (Graham 2013) 
+# Stem calibration.
+taxa_Lythraceae=["Adenaria_floribunda",
+        "Ammannia_baccifera",
+        "Ammannia_coccinea",
+        "Ammannia_latifolia",
+        "Ammannia_prieuriana",
+        "Ammannia_robusta",
+        "Capuronia_madagascariensis",
+        "Cuphea_appendiculata",
+        "Cuphea_carthagenensis",
+        "Cuphea_hyssopifolia",
+        "Cuphea_viscosissima",
+        "Decodon_verticillatus",
+        "Duabanga_grandiflora",
+        "Duabanga_moluccana",
+        "Galpinia_transvaalica",
+        "Heimia_montana",
+        "Heimia_myrtifolia",
+        "Heimia_salicifolia",
+        "Koehneria_madagascariensis",
+        "Lafoensia_acuminata",
+        "Lagerstroemia_indica",
+        "Lagerstroemia_parviflora",
+        "Lagerstroemia_speciosa",
+        "Lawsonia_inermis",
+        "Lythrum_borysthenicum",
+        "Lythrum_flagellare",
+        "Lythrum_hyssopifolia",
+        "Lythrum_junceum",
+        "Lythrum_maritimum",
+        "Lythrum_portula",
+        "Lythrum_salicaria",
+        "Nesaea_aspera",
+        "Pehria_compacta",
+        "Pemphis_acidula",
+        "Peplis_portula",
+        "Physocalymma_scaberrimum",
+        "Pleurophora_anomala",
+        "Punica_granatum",
+        "Rotala_indica",
+        "Rotala_ramosior",
+        "Rotala_rotundifolia",
+        "Sonneratia_alba",
+        "Sonneratia_apetala",
+        "Sonneratia_caseolaris",
+        "Sonneratia_ovata",
+        "Trapa_natans",
+        "Trapa_maximowiczii",
+        "Woodfordia_fruticosa"]
+clade_Lythraceae = clade(taxa=taxa_Lythraceae, age=86)
+
+k = 1
+for (i in 1:names.size()) {
+    found = false
+    for (j in 1:taxa_Lythraceae.size()) {
+        if (names[i] == taxa_Lythraceae[j]) {
+            found = true
+            break
+        }
+    }
+    if (!found) {
+        taxa_Onagraceae[k] = names[i]
+        k += 1
+    }
+}
+clade_Onagraceae = clade(taxa=taxa_Onagraceae, age=86)
+
+
+clade_Fuschia = clade("Fuchsia_andrei", "Fuchsia_arborescens", "Fuchsia_boliviana", "Fuchsia_bracelinae",
+   "Fuchsia_brevilobis", "Fuchsia_coccinea", "Fuchsia_colensoi", "Fuchsia_cylindracea", "Fuchsia_cyrtandroides", "Fuchsia_decussata", "Fuchsia_denticulata",
+      "Fuchsia_excorticata", "Fuchsia_fulgens", "Fuchsia_glazioviana", "Fuchsia_hartwegii", "Fuchsia_hatschbachii", "Fuchsia_inflata", "Fuchsia_insignis",
+         "Fuchsia_jimenezii", "Fuchsia_lycioides", "Fuchsia_macrostigma", "Fuchsia_magdalenae", "Fuchsia_magellanica", "Fuchsia_microphylla", "Fuchsia_nigricans",
+            "Fuchsia_pachyrrhiza", "Fuchsia_paniculata", "Fuchsia_pilaloensis", "Fuchsia_procumbens", "Fuchsia_regia", "Fuchsia_splendens", "Fuchsia_thymifolia",
+               "Fuchsia_triphylla", "Fuchsia_vargasiana", "Fuchsia_verrucosa", age=35)
+
+# Fuschia section Skinnera 23 Ma lognorm SD 1.0 offset 23 Lee et al, 2013
+# F. cyrtandroides, F. excorticata, and F. colensoi (section Skinnera). 
+# Stem calibration.
+clade_Skinnera = clade("Fuchsia_cyrtandroides", "Fuchsia_excorticata", "Fuchsia_colensoi", "Fuchsia_procumbens", age=25)
+
+
+# Circeae 12 Ma lognorm SD 1.0 Grimsoon et al. 2012. 
+# Stem calibration.
+clade_Circeae = clade("Circaea_alpina","Circaea_canadensis","Circaea_cordata","Circaea_erubescens",
+                        "Circaea_glabrescens","Circaea_lutetiana","Circaea_mollis","Circaea_repens", age=17)
+
+
+# Ludwigia broadly dated to Paleocene normal distribution mean 57.6 with SD 1.5 (Zhi-Chen et al., 2004) 
+# The ageof the Lizigou Formation has been considered as Late Palaeocene (59.2 - 56 Ma) based on palynological correlations (Sung& Tsao, 1976)
+# Song, Z. C., & Tsao, L. (1976). The Paleocene spores and pollen grains from the Fushun Coal Field, Northeast China. Acta Palaeontologica Sinica, 15(2), 147-164.
+# Stem calibration.
+clade_Ludwigia = clade("Ludwigia_adscendens","Ludwigia_alata","Ludwigia_arcuata","Ludwigia_brevipes","Ludwigia_glandulosa",
+                        "Ludwigia_grandiflora","Ludwigia_hyssopifolia","Ludwigia_inclinata","Ludwigia_lanceolata",
+                        "Ludwigia_nervosa","Ludwigia_octovalvis","Ludwigia_ovalis","Ludwigia_palustris",
+                        "Ludwigia_peploides","Ludwigia_peruviana","Ludwigia_polycarpa","Ludwigia_ravenii",
+                        "Ludwigia_repens","Ludwigia_sedoides","Ludwigia_spathulata","Ludwigia_sphaerocarpa",
+                        "Ludwigia_suffruticosa", age=57.6)
+
+
+# Epilobium and Chamerion 12 Ma lognormal SD 2.0 offset 12 Grimsoon et al. 2012 
+# Stem calibration.
+clade_Epilobium = clade("Chamerion_angustifolium","Chamerion_conspersum","Chamerion_dodonaei","Chamerion_latifolium",
+                        "Epilobium_alsinifolium","Epilobium_alsinoides","Epilobium_anagallidifolium","Epilobium_angustum",
+                        "Epilobium_arcticum","Epilobium_billardierianum","Epilobium_brachycarpum","Epilobium_brevipes",
+                        "Epilobium_brunnescens","Epilobium_canum","Epilobium_chionanthum","Epilobium_chlorifolium",
+                        "Epilobium_ciliatum","Epilobium_cleistogamum","Epilobium_coloratum","Epilobium_crassum",
+                        "Epilobium_cylindricum","Epilobium_davuricum","Epilobium_densiflorum","Epilobium_foliosum",
+                        "Epilobium_glabellum","Epilobium_gracilipes","Epilobium_gunnianum","Epilobium_hirsutum",
+                        "Epilobium_hirtigerum","Epilobium_hornemannii","Epilobium_insulare","Epilobium_komarovianum",
+                        "Epilobium_lactiflorum","Epilobium_lanceolatum","Epilobium_leptophyllum","Epilobium_luteum",
+                        "Epilobium_macropus","Epilobium_margaretiae","Epilobium_melanocaulon","Epilobium_microphyllum",
+                        "Epilobium_minutum","Epilobium_montanum","Epilobium_nerteroides","Epilobium_nevadense",
+                        "Epilobium_nummulariifolium","Epilobium_obcordatum","Epilobium_obscurum","Epilobium_pallidiflorum",
+                        "Epilobium_pallidum","Epilobium_palustre","Epilobium_parviflorum","Epilobium_pedunculare",
+                        "Epilobium_pernitens","Epilobium_porphyrium","Epilobium_pubens","Epilobium_pycnostachyum",
+                        "Epilobium_pygmaeum","Epilobium_rigidum","Epilobium_roseum","Epilobium_rostratum","Epilobium_rotundifolium",
+                        "Epilobium_septentrionale","Epilobium_sikkimense","Epilobium_siskiyouense","Epilobium_subdentatum",
+                        "Epilobium_suffruticosum","Epilobium_tasmanicum","Epilobium_tetragonum","Epilobium_torreyi","Epilobium_wilsonii", age=17)
+
+
+# load the constraints into a vector for the BDP model
+constraints = v(clade_Lythraceae, clade_Onagraceae, clade_Fuschia, clade_Skinnera, clade_Ludwigia, clade_Epilobium, clade_Circeae)
+
+
+####### tree model
+
+# set up the parameters for the constant rate birth-death process
+root_time <- 110
+
+# Specify a prior on the diversification and relative extinction rate
+# using BEAST2 default priors
+speciation ~ dnUnif(0, 10000)
+speciation.setValue(1.0)
+relative_extinction ~ dnUnif(0, 1)
+relative_extinction.setValue(0.5)
+
+# make extinction a deterministic node
+extinction := speciation * relative_extinction
+
+# the probability of sampling species at the present:
+# the number of species in Onagraceae is ~650 and Lythraceae ~620
+# we have 340 tips in our sample. so rho = 340/1270 ~ 0.27
+
+# draw a tree from the birth death process that meets our constraints
+timetree ~ dnBDP(lambda=speciation, mu=extinction, rho=0.27, rootAge=root_time, nTaxa=n_species, names=names, constraints=constraints)
+
+write(file="starting_tree.tree", timetree)
+
+q()
