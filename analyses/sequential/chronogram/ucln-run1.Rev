@@ -2,8 +2,11 @@
 # script to estimate chronogram of Onagraceae using discretized UCLN model
 # and 5 node calibrations
 
+# set the run number
+run_num = 1
+
 # set the number of iterations to sample from MCMC
-sample_freq = 1
+sample_freq = 10
 
 ########## Read in data
 
@@ -356,7 +359,7 @@ for (j in 1:n_branches) {
 
     # for each branch pull from one of the rate categories
     branch_rates[j] ~ dnMixture(rate_categories, rate_probs)
-    moves[++mi] = mvMixtureAllocation(branch_rates[j], weight=1)
+    moves[++mi] = mvMixtureAllocation(branch_rates[j], weight=20/n_branches)
 }
 
 mean_rt := mean(branch_rates)
@@ -379,13 +382,13 @@ mymodel = model(timetree)
 
 
 ### set up the monitors that will output parameter values to file and screen
-monitors[1] = mnFile(filename="output/UCLN.log", printgen=sample_freq,
+monitors[1] = mnFile(filename="output/ucln-run" + run_num + ".log", printgen=sample_freq,
                             speciation, extinction, relative_extinction,  
                             root_time, tmrca_Circeae, tmrca_Ludwigia,tmrca_Epilobium,tmrca_Lythraceae,tmrca_Skinnera,
                             ucln_mu, ucln_sigma, mean_rt)
-monitors[2] = mnFile(filename="output/UCLN.trees", printgen=sample_freq, timetree)
+monitors[2] = mnFile(filename="output/ucln-run" + run_num + ".trees", printgen=sample_freq, timetree)
 monitors[3] = mnScreen(printgen=sample_freq, mean_rt, ucln_mu, ucln_sigma, root_time)
-monitors[4] = mnModel(filename="output/UCLN_model.log",printgen=sample_freq)
+monitors[4] = mnModel(filename="output/ucln_model-run" + run_num + ".log",printgen=sample_freq)
 
 ### workspace mcmc ###
 mymcmc = mcmc(mymodel, monitors, moves)
@@ -394,7 +397,7 @@ mymcmc = mcmc(mymodel, monitors, moves)
 #mymcmc.burnin(generations=500,tuningInterval=10)
 
 ### run the MCMC ###
-mymcmc.run(generations=10000)
+mymcmc.run(generations=10000000)
 
 ### display proposal acceptance rates and tuning ###
 #mymcmc.operatorSummary()
