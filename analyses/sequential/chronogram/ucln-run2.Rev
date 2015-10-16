@@ -239,7 +239,7 @@ constraints = v(clade_Lythraceae, clade_Onagraceae, clade_Fuschia, clade_Skinner
 
 # Specify a prior on the diversification and relative extinction rate
 # using BEAST2 default priors
-speciation ~ dnUnif(0, 10000)
+speciation ~ dnUnif(0, 1000)
 speciation.setValue(1.0)
 relative_extinction ~ dnUnif(0, 1)
 relative_extinction.setValue(0.5)
@@ -343,7 +343,7 @@ stem_Circeae_fossil.clamp(-12.0)
 ####### UCLN model on branch rates
 
 # using BEAST2 defaul priors
-ucln_mu ~ dnUnif(-10, 10)
+ucln_mu ~ dnUnif(-10, 1)
 ucln_mu.setValue(0.0)
 ucln_sigma ~ dnGamma(0.5396, 0.3819)
 ucln_sigma.setValue(0.1)
@@ -394,7 +394,7 @@ monitors[4] = mnModel(filename="output/ucln_model-run" + run_num + ".log",printg
 mymcmc = mcmc(mymodel, monitors, moves)
 
 ### pre-burnin to tune the proposals ###
-#mymcmc.burnin(generations=500,tuningInterval=10)
+mymcmc.burnin(generations=1000, tuningInterval=10)
 
 ### run the MCMC ###
 mymcmc.run(generations=10000000)
