@@ -64,11 +64,11 @@ for (i in 1:n_partitions) {
     cg[i].setValue(1.0)
     gt[i].setValue(1.0)
 
-    moves[++mi] = mvScale(ac[i], lambda=0.5, weight=1)
-    moves[++mi] = mvScale(ag[i], lambda=0.5, weight=1)
-    moves[++mi] = mvScale(at[i], lambda=0.5, weight=1)
-    moves[++mi] = mvScale(cg[i], lambda=0.5, weight=1)
-    moves[++mi] = mvScale(gt[i], lambda=0.5, weight=1)
+    moves[++mi] = mvScale(ac[i], lambda=0.05, weight=1)
+    moves[++mi] = mvScale(ag[i], lambda=0.05, weight=1)
+    moves[++mi] = mvScale(at[i], lambda=0.05, weight=1)
+    moves[++mi] = mvScale(cg[i], lambda=0.05, weight=1)
+    moves[++mi] = mvScale(gt[i], lambda=0.05, weight=1)
 
     sf_prior[i] <- v(1,1,1,1)
     sf[i] ~ dnDirichlet(sf_prior[i])
@@ -87,7 +87,7 @@ for (i in 1:n_partitions) {
     alpha_prior[i] <- 1.0
     alpha[i] ~ dnExponential( alpha_prior[i] )
     gamma_rates[i] := fnDiscretizeGamma( alpha[i], alpha[i], 4, false )
-    moves[++mi] = mvScale(alpha[i],weight=10)
+    moves[++mi] = mvScale(alpha[i], lambda=0.05, weight=10)
 
 }
 
@@ -128,12 +128,12 @@ root_frequencies := simplex(1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,
 #root_frequencies := simplex(rep(max_chromo, 1))
 
 # Add moves for each of the rates.
-moves[mi++] = mvScale(lambda, lambda=1, weight=2) 
-moves[mi++] = mvScale(delta, lambda=1, weight=2) 
-moves[mi++] = mvScale(rho, lambda=1, weight=2) 
-moves[mi++] = mvScale(mu, lambda=1, weight=2) 
-moves[mi++] = mvScale(lambda_l, lambda=1, weight=2) 
-moves[mi++] = mvScale(delta_l, lambda=1, weight=2) 
+moves[mi++] = mvScale(lambda, lambda=0.05, weight=2) 
+moves[mi++] = mvScale(delta, lambda=0.05, weight=2) 
+moves[mi++] = mvScale(rho, lambda=0.05, weight=2) 
+moves[mi++] = mvScale(mu, lambda=0.05, weight=2) 
+moves[mi++] = mvScale(lambda_l, lambda=0.05, weight=2) 
+moves[mi++] = mvScale(delta_l, lambda=0.05, weight=2) 
 
 moves[mi++] = mvRJSwitch(rho, weight=2)
 moves[mi++] = mvRJSwitch(mu, weight=2)
@@ -150,8 +150,8 @@ moves[mi++] = mvRJSwitch(delta_l, weight=2)
 root_time ~ dnUnif(82.0, 150.0)
 
 # add moves for root time
-moves[++mi] = mvSlide(root_time, delta=1.0, weight=5)
-moves[++mi] = mvScale(root_time, lambda=1.0, weight=5)
+moves[++mi] = mvSlide(root_time, delta=0.05, weight=5)
+moves[++mi] = mvScale(root_time, lambda=0.05, weight=5)
 
 # topology constraints for the internal node calibrations:
 
@@ -298,8 +298,8 @@ relative_extinction.setValue(0.5)
 # make extinction a deterministic node
 extinction := speciation * relative_extinction
 
-moves[++mi] = mvSlide(speciation, delta=1, weight=3)
-moves[++mi] = mvSlide(relative_extinction, delta=1, weight=3)
+moves[++mi] = mvSlide(speciation, delta=0.05, weight=3)
+moves[++mi] = mvSlide(relative_extinction, delta=0.05, weight=3)
 
 # the probability of sampling species at the present:
 # the number of species in Onagraceae is ~650 and Lythraceae ~620
@@ -313,7 +313,8 @@ timetree.setValue(starting_tree)
 
 # add moves on the tree node times
 moves[++mi] = mvNodeTimeSlideUniform(timetree, weight=10)
-moves[++mi] = mvTreeScale(tree=timetree, rootAge=root_time, delta=1.0, weight=5)
+moves[++mi] = mvNodeTimeScale(timetree, lambda=0.05, weight=5)
+moves[++mi] = mvTreeScale(tree=timetree, rootAge=root_time, delta=0.05, weight=5)
 moves[++mi] = mvSubtreeScale(timetree, weight=10)
 
 # and moves for the tree topology
@@ -400,8 +401,8 @@ ucln_sigma ~ dnGamma(0.5396, 0.3819)
 ucln_sigma.setValue(0.1)
 ucln_var := ucln_sigma * ucln_sigma
 
-moves[++mi] = mvSlide(ucln_mu, delta=0.5, weight=4)
-moves[++mi] = mvScale(ucln_sigma, lambda=0.5, weight=4)
+moves[++mi] = mvSlide(ucln_mu, delta=0.05, weight=4)
+moves[++mi] = mvScale(ucln_sigma, lambda=0.05, weight=4)
 
 # use discretized lognormal
 rate_categories := fnDiscretizeDistribution(dnLnorm(ucln_mu, ucln_sigma), 20)
@@ -451,7 +452,7 @@ mymodel = model(timetree)
 mymcmc = mcmc(mymodel, monitors, moves)
 
 ### pre-burnin to tune the proposals ###
-mymcmc.burnin(generations=1000, tuningInterval=sample_freq)
+#mymcmc.burnin(generations=1000, tuningInterval=sample_freq)
 
 ### run the MCMC ###
 mymcmc.run(generations=10000000)
