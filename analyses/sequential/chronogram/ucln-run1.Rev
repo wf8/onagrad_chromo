@@ -61,15 +61,15 @@ for (i in 1:n_partitions) {
     cg[i].setValue(1.0)
     gt[i].setValue(1.0)
 
-    moves[++mi] = mvScale(ac[i], lambda=0.01, weight=1)
-    moves[++mi] = mvScale(ag[i], lambda=0.01, weight=1)
-    moves[++mi] = mvScale(at[i], lambda=0.01, weight=1)
-    moves[++mi] = mvScale(cg[i], lambda=0.01, weight=1)
-    moves[++mi] = mvScale(gt[i], lambda=0.01, weight=1)
+    moves[++mi] = mvScale(ac[i], lambda=0.01, weight=5)
+    moves[++mi] = mvScale(ag[i], lambda=0.01, weight=5)
+    moves[++mi] = mvScale(at[i], lambda=0.01, weight=5)
+    moves[++mi] = mvScale(cg[i], lambda=0.01, weight=5)
+    moves[++mi] = mvScale(gt[i], lambda=0.01, weight=5)
 
     sf_prior[i] <- v(1,1,1,1)
     sf[i] ~ dnDirichlet(sf_prior[i])
-    moves[++mi] = mvSimplexElementScale(sf[i], alpha=0.01, weight=2)
+    moves[++mi] = mvSimplexElementScale(sf[i], alpha=0.01, weight=5)
 
     # create a deterministic variable for the rate matrix
     Q[i] := fnGTR(er[i],sf[i])
@@ -77,8 +77,8 @@ for (i in 1:n_partitions) {
     # base rate 
     base_rate[i] ~ dnExponential(10.0)
     base_rate[i].setValue(1.0)
-    moves[++mi] = mvScale(base_rate[i], lambda=0.01, weight=2)
-    moves[++mi] = mvSlide(base_rate[i], delta=0.01, weight=2)
+    moves[++mi] = mvScale(base_rate[i], lambda=0.01, weight=10)
+    moves[++mi] = mvSlide(base_rate[i], delta=0.01, weight=10)
 
     # add among site rate variation
     alpha_prior[i] <- 1.0
@@ -248,7 +248,9 @@ relative_extinction.setValue(0.5)
 extinction := speciation * relative_extinction
 
 moves[++mi] = mvSlide(speciation, delta=0.01, weight=3)
+moves[++mi] = mvScale(speciation, lambda=0.01, weight=3)
 moves[++mi] = mvSlide(relative_extinction, delta=0.01, weight=3)
+moves[++mi] = mvScale(relative_extinction, lambda=0.01, weight=3)
 
 # the probability of sampling species at the present:
 # the number of species in Onagraceae is ~650 and Lythraceae ~620
@@ -262,7 +264,7 @@ timetree.setValue(starting_tree)
 
 # add moves on the tree node times
 moves[++mi] = mvNodeTimeSlideUniform(timetree, weight=10)
-moves[++mi] = mvNodeTimeScale(timetree, lambda=0.01, weight=5)
+moves[++mi] = mvNodeTimeScale(timetree, lambda=0.01, weight=10)
 moves[++mi] = mvTreeScale(tree=timetree, rootAge=root_time, delta=0.01, weight=5)
 moves[++mi] = mvSubtreeScale(timetree, weight=10)
 
@@ -344,23 +346,26 @@ stem_Circeae_fossil.clamp(-12.0)
 ####### UCLN model on branch rates
 
 # using BEAST2 defaul priors
-ucln_mu ~ dnUnif(-10, 1)
-ucln_mu.setValue(0.0)
+ucln_mean ~ dnUnif(0, 2)
+ucln_mean.setValue(1.0)
 ucln_sigma ~ dnGamma(0.5396, 0.3819)
 ucln_sigma.setValue(3.0)
 ucln_var := ucln_sigma * ucln_sigma
+ucln_mu := ln(ucln_mean) - (ucln_var * 0.5)
 
-moves[++mi] = mvSlide(ucln_mu, delta=0.01, weight=10)
+moves[++mi] = mvSlide(ucln_mean, delta=0.01, weight=10)
+moves[++mi] = mvScale(ucln_mean, lambda=0.01, weight=10)
+moves[++mi] = mvSlide(ucln_sigma, delta=0.01, weight=10)
 moves[++mi] = mvScale(ucln_sigma, lambda=0.01, weight=10)
 
 # use discretized lognormal
-rate_categories := fnDiscretizeDistribution(dnLnorm(ucln_mu, ucln_sigma), 20)
-rate_probs = simplex(rep(1, 20))
+rate_categories := fnDiscretizeDistribution(dnLnorm(ucln_mu, ucln_sigma), 100)
+rate_probs = simplex(rep(1, 100))
 for (j in 1:n_branches) {
 
     # for each branch pull from one of the rate categories
     branch_rates[j] ~ dnMixture(rate_categories, rate_probs)
-    moves[++mi] = mvMixtureAllocation(branch_rates[j], weight=20/n_branches)
+    moves[++mi] = mvMixtureAllocation(branch_rates[j], weight=40/n_branches)
 }
 
 mean_rt := mean(branch_rates)
