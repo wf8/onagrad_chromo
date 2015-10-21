@@ -290,7 +290,7 @@ constraints = v(clade_Lythraceae, clade_Onagraceae, clade_Fuschia, clade_Skinner
 
 # Specify a prior on the diversification and relative extinction rate
 # using BEAST2 default priors
-speciation ~ dnUnif(0, 1000)
+speciation ~ dnUnif(0, 300)
 speciation.setValue(1.0)
 relative_extinction ~ dnUnif(0, 1)
 relative_extinction.setValue(0.5)
@@ -404,14 +404,15 @@ ucln_sigma.setValue(3.0)
 ucln_var := ucln_sigma * ucln_sigma
 ucln_mu := ln(ucln_mean) - (ucln_var * 0.5)
 
-moves[++mi] = mvSlide(ucln_mean, delta=0.01, weight=10)
-moves[++mi] = mvScale(ucln_mean, lambda=0.01, weight=10)
-moves[++mi] = mvSlide(ucln_sigma, delta=0.01, weight=10)
-moves[++mi] = mvScale(ucln_sigma, lambda=0.01, weight=10)
+moves[++mi] = mvSlide(ucln_mean, delta=0.01, weight=40)
+moves[++mi] = mvScale(ucln_mean, lambda=0.01, weight=40)
+moves[++mi] = mvScalerUpDown(ucln_mean, root_time, scale=0.01, weight=60)
+moves[++mi] = mvSlide(ucln_sigma, delta=0.01, weight=20)
+moves[++mi] = mvScale(ucln_sigma, lambda=0.01, weight=20)
 
 # use discretized lognormal
-rate_categories := fnDiscretizeDistribution(dnLnorm(ucln_mu, ucln_sigma), 100)
-rate_probs = simplex(rep(1, 100))
+rate_categories := fnDiscretizeDistribution(dnLnorm(ucln_mu, ucln_sigma), 40)
+rate_probs = simplex(rep(1, 40))
 for (j in 1:n_branches) {
 
     # for each branch pull from one of the rate categories
@@ -445,7 +446,7 @@ monitors[1] = mnFile(filename="output/joint-run" + run_num + ".log", printgen=sa
                             root_time, tmrca_Circeae, tmrca_Ludwigia,tmrca_Epilobium,tmrca_Lythraceae,tmrca_Skinnera,
                             ucln_mu, ucln_sigma, mean_rt, lambda, delta, rho, mu)
 monitors[2] = mnFile(filename="output/joint-run" + run_num + ".trees", printgen=sample_freq, timetree)
-monitors[3] = mnScreen(printgen=sample_freq, mean_rt, ucln_mu, ucln_sigma, root_time)
+monitors[3] = mnScreen(printgen=sample_freq, mean_rt, ucln_mu, ucln_sigma, root_time, tmrca_Circeae)
 monitors[4] = mnModel(filename="output/joint_model-run" + run_num + ".log",printgen=sample_freq)
 monitors[5] = mnAncestralState(filename="output/joint_ancestral_states-run"+ run_num + ".log", printgen=sample_freq, tree=timetree, ctmc=chromo_ctmc, type="NaturalNumbers")
 
