@@ -3,7 +3,7 @@
 # and 5 node calibrations
 
 # set the run number
-run_num = 2
+run_num = 2 
 
 # set the number of iterations to sample from MCMC
 sample_freq = 10
@@ -345,22 +345,21 @@ stem_Circeae_fossil.clamp(-12.0)
 
 ####### UCLN model on branch rates
 
-# using BEAST2 defaul priors
-ucln_mean ~ dnUnif(0, 2)
+ucln_mean ~ dnUnif(1E-10, 2)
 ucln_mean.setValue(1.0)
-ucln_sigma ~ dnGamma(0.5396, 0.3819)
-ucln_sigma.setValue(3.0)
-ucln_var := ucln_sigma * ucln_sigma
-ucln_mu := ln(ucln_mean) - (ucln_var * 0.5)
+ucln_log_mean := ln( ucln_mean )
+#ucln_sigma ~ dnGamma(0.5396, 0.3819)
+ucln_sigma ~ dnExponential(1.0)
+#ucln_var := ucln_sigma * ucln_sigma
+#ucln_mu := ln(ucln_mean) - (ucln_var * 0.5)
 
-moves[++mi] = mvSlide(ucln_mean, delta=0.01, weight=40)
-moves[++mi] = mvScale(ucln_mean, lambda=0.01, weight=40)
-moves[++mi] = mvScalerUpDown(ucln_mean, root_time, scale=0.01, weight=60)
-moves[++mi] = mvSlide(ucln_sigma, delta=0.01, weight=20)
-moves[++mi] = mvScale(ucln_sigma, lambda=0.01, weight=20)
+moves[++mi] = mvSlide(ucln_mean, delta=0.01, weight=10)
+moves[++mi] = mvScale(ucln_mean, lambda=0.01, weight=10)
+moves[++mi] = mvSlide(ucln_sigma, delta=0.01, weight=10)
+moves[++mi] = mvScale(ucln_sigma, lambda=0.01, weight=10)
 
 # use discretized lognormal
-rate_categories := fnDiscretizeDistribution(dnLnorm(ucln_mu, ucln_sigma), 40)
+rate_categories := fnDiscretizeDistribution(dnLnorm(ucln_log_mean, ucln_sigma), 40)
 rate_probs = simplex(rep(1, 40))
 for (j in 1:n_branches) {
 
@@ -368,6 +367,18 @@ for (j in 1:n_branches) {
     branch_rates[j] ~ dnMixture(rate_categories, rate_probs)
     moves[++mi] = mvMixtureAllocation(branch_rates[j], weight=40/n_branches)
 }
+
+up_down_scale = mvUpDownScale(lambda=0.01, weight=50)
+up_down_scale.addVariable( timetree, TRUE )
+up_down_scale.addVariable( root_time, TRUE )
+up_down_scale.addVariable( ucln_mean, FALSE )
+moves[++mi] = up_down_scale
+
+up_down_scale2 = mvUpDownScale(lambda=0.01, weight=50)
+up_down_scale2.addVariable( timetree, TRUE )
+up_down_scale2.addVariable( root_time, TRUE )
+up_down_scale2.addVariable( ucln_sigma, FALSE )
+moves[++mi] = up_down_scale2
 
 mean_rt := mean(branch_rates)
 
@@ -392,9 +403,9 @@ mymodel = model(timetree)
 monitors[1] = mnFile(filename="output/ucln-run" + run_num + ".log", printgen=sample_freq,
                             speciation, extinction, relative_extinction,  
                             root_time, tmrca_Circeae, tmrca_Ludwigia,tmrca_Epilobium,tmrca_Lythraceae,tmrca_Skinnera,
-                            ucln_mu, ucln_sigma, mean_rt)
+                            ucln_log_mean, ucln_sigma, mean_rt)
 monitors[2] = mnFile(filename="output/ucln-run" + run_num + ".trees", printgen=sample_freq, timetree)
-monitors[3] = mnScreen(printgen=sample_freq, mean_rt, ucln_mu, ucln_sigma, root_time, tmrca_Circeae)
+monitors[3] = mnScreen(printgen=sample_freq, mean_rt, ucln_log_mean, ucln_sigma, root_time, tmrca_Circeae)
 monitors[4] = mnModel(filename="output/ucln_model-run" + run_num + ".log",printgen=sample_freq)
 
 ### workspace mcmc ###
