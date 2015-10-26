@@ -74,11 +74,13 @@ for (i in 1:n_partitions) {
     # create a deterministic variable for the rate matrix
     Q[i] := fnGTR(er[i],sf[i])
 
-    # base rate 
-    base_rate[i] ~ dnExponential(10.0)
-    base_rate[i].setValue(1.0)
-    moves[++mi] = mvScale(base_rate[i], lambda=0.01, weight=10)
-    moves[++mi] = mvSlide(base_rate[i], delta=0.01, weight=10)
+    # base rate
+    if (i > 1) {
+        base_rate[i] ~ dnExponential(10.0)
+        base_rate[i].setValue(1.0)
+        moves[++mi] = mvScale(base_rate[i], lambda=0.01, weight=10)
+        moves[++mi] = mvSlide(base_rate[i], delta=0.01, weight=10)
+    }
 
     # add among site rate variation
     alpha_prior[i] <- 1.0
@@ -284,8 +286,8 @@ tmrca_Skinnera := tmrca(timetree, clade_Skinnera, stemAge=TRUE)
 negative_tmrca_Skinnera := -(tmrca_Skinnera)
 # the age of the fossil is a stochastic node that has a lognormal waiting time that is a function of the age of the calibration node
 # we will model this waiting time so that the fossil is mean 10 My younger than its ancestor, but could be ~ 0-30 My
-mean_ln_skin = 5
-sdv = 1.0
+mean_ln_skin = 10
+sdv = 2.0
 mu = ln(mean_ln_skin) - ((sdv * sdv) * 0.5)
 # using these parameters we create a stochastic node for the fossil
 stem_Skinnera_fossil ~ dnLnorm(mu, sdv, offset=negative_tmrca_Skinnera)
@@ -355,12 +357,13 @@ ucln_sigma ~ dnExponential(1.0)
 
 moves[++mi] = mvSlide(ucln_mean, delta=0.01, weight=10)
 moves[++mi] = mvScale(ucln_mean, lambda=0.01, weight=10)
-moves[++mi] = mvSlide(ucln_sigma, delta=0.01, weight=10)
-moves[++mi] = mvScale(ucln_sigma, lambda=0.01, weight=10)
+moves[++mi] = mvSlide(ucln_sigma, delta=0.01, weight=60)
+moves[++mi] = mvScale(ucln_sigma, lambda=0.01, weight=60)
 
 # use discretized lognormal
-rate_categories := fnDiscretizeDistribution(dnLnorm(ucln_log_mean, ucln_sigma), 40)
-rate_probs = simplex(rep(1, 40))
+num_rate_categories = (2 * n_species) - 2
+rate_categories := fnDiscretizeDistribution(dnLnorm(ucln_log_mean, ucln_sigma), num_rate_categories)
+rate_probs = simplex(rep(1, num_rate_categories))
 for (j in 1:n_branches) {
 
     # for each branch pull from one of the rate categories
@@ -374,18 +377,16 @@ up_down_scale.addVariable( root_time, TRUE )
 up_down_scale.addVariable( ucln_mean, FALSE )
 moves[++mi] = up_down_scale
 
-up_down_scale2 = mvUpDownScale(lambda=0.01, weight=50)
-up_down_scale2.addVariable( timetree, TRUE )
-up_down_scale2.addVariable( root_time, TRUE )
-up_down_scale2.addVariable( ucln_sigma, FALSE )
-moves[++mi] = up_down_scale2
-
 mean_rt := mean(branch_rates)
 
 for (i in 1:n_partitions) {
 
     # the branch-rates used in the phylogenetic CTMC are a function of the UCLN branch rates and the base rate for this partition
-    branch_subrates[i] := branch_rates * base_rate[i]
+    if (i == 1) {
+        branch_subrates[i] := branch_rates
+    } else {
+        branch_subrates[i] := branch_rates * base_rate[i]
+    }
 
     ### the full phylogenetic CTMC
     seq[i] ~ dnPhyloCTMC(tree=timetree, Q=Q[i], branchRates=branch_subrates[i], nSites=n_sites[i], siteRates=gamma_rates[i], type="DNA")
