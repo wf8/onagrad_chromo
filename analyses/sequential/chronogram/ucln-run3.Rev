@@ -6,7 +6,7 @@
 run_num = 3 
 
 # set the number of iterations to sample from MCMC
-sample_freq = 10
+sample_freq = 5
 
 ########## Read in data
 
@@ -61,32 +61,24 @@ for (i in 1:n_partitions) {
     cg[i].setValue(1.0)
     gt[i].setValue(1.0)
 
-    moves[++mi] = mvScale(ac[i], lambda=0.01, weight=5)
-    moves[++mi] = mvScale(ag[i], lambda=0.01, weight=5)
-    moves[++mi] = mvScale(at[i], lambda=0.01, weight=5)
-    moves[++mi] = mvScale(cg[i], lambda=0.01, weight=5)
-    moves[++mi] = mvScale(gt[i], lambda=0.01, weight=5)
+    moves[++mi] = mvScale(ac[i], lambda=0.1, weight=5)
+    moves[++mi] = mvScale(ag[i], lambda=0.1, weight=5)
+    moves[++mi] = mvScale(at[i], lambda=0.1, weight=5)
+    moves[++mi] = mvScale(cg[i], lambda=0.1, weight=5)
+    moves[++mi] = mvScale(gt[i], lambda=0.1, weight=5)
 
     sf_prior[i] <- v(1,1,1,1)
     sf[i] ~ dnDirichlet(sf_prior[i])
-    moves[++mi] = mvSimplexElementScale(sf[i], alpha=0.01, weight=5)
+    moves[++mi] = mvSimplexElementScale(sf[i], alpha=0.1, weight=5)
 
     # create a deterministic variable for the rate matrix
     Q[i] := fnGTR(er[i],sf[i])
-
-    # base rate
-    if (i > 1) {
-        base_rate[i] ~ dnExponential(10.0)
-        base_rate[i].setValue(1.0)
-        moves[++mi] = mvScale(base_rate[i], lambda=0.01, weight=10)
-        moves[++mi] = mvSlide(base_rate[i], delta=0.01, weight=10)
-    }
 
     # add among site rate variation
     alpha_prior[i] <- 1.0
     alpha[i] ~ dnExponential( alpha_prior[i] )
     gamma_rates[i] := fnDiscretizeGamma( alpha[i], alpha[i], 4, false )
-    moves[++mi] = mvScale(alpha[i], lambda=0.01, weight=10)
+    moves[++mi] = mvScale(alpha[i], lambda=0.1, weight=10)
 
 }
 
@@ -101,8 +93,8 @@ for (i in 1:n_partitions) {
 root_time ~ dnUnif(82.0, 150.0)
 
 # add moves for root time
-moves[++mi] = mvSlide(root_time, delta=0.01, weight=5)
-moves[++mi] = mvScale(root_time, lambda=0.01, weight=5)
+moves[++mi] = mvSlide(root_time, delta=0.1, weight=5)
+moves[++mi] = mvScale(root_time, lambda=0.1, weight=5)
 
 # topology constraints for the internal node calibrations:
 
@@ -249,10 +241,10 @@ relative_extinction.setValue(0.5)
 # make extinction a deterministic node
 extinction := speciation * relative_extinction
 
-moves[++mi] = mvSlide(speciation, delta=0.01, weight=3)
-moves[++mi] = mvScale(speciation, lambda=0.01, weight=3)
-moves[++mi] = mvSlide(relative_extinction, delta=0.01, weight=3)
-moves[++mi] = mvScale(relative_extinction, lambda=0.01, weight=3)
+moves[++mi] = mvSlide(speciation, delta=0.1, weight=3)
+moves[++mi] = mvScale(speciation, lambda=0.1, weight=3)
+moves[++mi] = mvSlide(relative_extinction, delta=0.1, weight=3)
+moves[++mi] = mvScale(relative_extinction, lambda=0.1, weight=3)
 
 # the probability of sampling species at the present:
 # the number of species in Onagraceae is ~650 and Lythraceae ~620
@@ -266,15 +258,15 @@ timetree.setValue(starting_tree)
 
 # add moves on the tree node times
 moves[++mi] = mvNodeTimeSlideUniform(timetree, weight=10)
-moves[++mi] = mvNodeTimeScale(timetree, lambda=0.01, weight=10)
-moves[++mi] = mvTreeScale(tree=timetree, rootAge=root_time, delta=0.01, weight=5)
+moves[++mi] = mvNodeTimeScale(timetree, lambda=0.1, weight=10)
+moves[++mi] = mvTreeScale(tree=timetree, rootAge=root_time, delta=0.1, weight=5)
 moves[++mi] = mvSubtreeScale(timetree, weight=10)
 
 # and moves for the tree topology
-moves[++mi] = mvNNI(timetree, weight=10)
-moves[++mi] = mvNarrow(timetree, weight=10)
-moves[++mi] = mvFNPR(timetree, weight=10)
-moves[++mi] = mvGPR(timetree, weight=5)
+moves[++mi] = mvNNI(timetree, weight=20)
+moves[++mi] = mvNarrow(timetree, weight=20)
+moves[++mi] = mvFNPR(timetree, weight=20)
+moves[++mi] = mvGPR(timetree, weight=10)
 
 
 
@@ -345,51 +337,38 @@ stem_Circeae_fossil ~ dnLnorm(mu_cir, 2.0, offset=negative_tmrca_Circeae)
 stem_Circeae_fossil.clamp(-12.0)
 
 
-####### UCLN model on branch rates
-
-ucln_mean ~ dnUnif(1E-10, 2)
-ucln_mean.setValue(1.0)
-ucln_log_mean := ln( ucln_mean )
-#ucln_sigma ~ dnGamma(0.5396, 0.3819)
-ucln_sigma ~ dnExponential(1.0)
-#ucln_var := ucln_sigma * ucln_sigma
-#ucln_mu := ln(ucln_mean) - (ucln_var * 0.5)
-
-moves[++mi] = mvSlide(ucln_mean, delta=0.01, weight=10)
-moves[++mi] = mvScale(ucln_mean, lambda=0.01, weight=10)
-moves[++mi] = mvSlide(ucln_sigma, delta=0.01, weight=60)
-moves[++mi] = mvScale(ucln_sigma, lambda=0.01, weight=60)
-
-# use discretized lognormal
+####### UCLN model on branch rates, separate models for each partition
 num_rate_categories = (2 * n_species) - 2
-rate_categories := fnDiscretizeDistribution(dnLnorm(ucln_log_mean, ucln_sigma), num_rate_categories)
 rate_probs = simplex(rep(1, num_rate_categories))
-for (j in 1:n_branches) {
-
-    # for each branch pull from one of the rate categories
-    branch_rates[j] ~ dnMixture(rate_categories, rate_probs)
-    moves[++mi] = mvMixtureAllocation(branch_rates[j], weight=40/n_branches)
-}
-
-up_down_scale = mvUpDownScale(lambda=0.01, weight=50)
-up_down_scale.addVariable( timetree, TRUE )
-up_down_scale.addVariable( root_time, TRUE )
-up_down_scale.addVariable( ucln_mean, FALSE )
-moves[++mi] = up_down_scale
-
-mean_rt := mean(branch_rates)
 
 for (i in 1:n_partitions) {
+    ucln_mean[i] ~ dnUnif(1E-10, 2)
+    ucln_mean[i].setValue(1.0)
+    ucln_log_mean[i] := ln( ucln_mean[i] )
+    ucln_sigma[i] ~ dnExponential(1.0)
 
-    # the branch-rates used in the phylogenetic CTMC are a function of the UCLN branch rates and the base rate for this partition
-    if (i == 1) {
-        branch_subrates[i] := branch_rates
-    } else {
-        branch_subrates[i] := branch_rates * base_rate[i]
+    moves[++mi] = mvScale(ucln_mean[i], lambda=0.1, weight=10)
+    moves[++mi] = mvScale(ucln_sigma[i], lambda=0.1, weight=10)
+
+    # use discretized lognormal
+    rate_categories[i] := fnDiscretizeDistribution(dnLnorm(ucln_log_mean[i], ucln_sigma[i]), num_rate_categories)
+    for (j in 1:n_branches) {
+
+        # for each branch pull from one of the rate categories
+        branch_rates[i][j] ~ dnMixture(rate_categories[i], rate_probs)
+        moves[++mi] = mvMixtureAllocation(branch_rates[i][j], weight=20/n_branches)
     }
 
+    up_down_scale[i] = mvUpDownScale(lambda=0.1, weight=10)
+    up_down_scale[i].addVariable( timetree, TRUE )
+    up_down_scale[i].addVariable( root_time, TRUE )
+    up_down_scale[i].addVariable( ucln_mean[i], FALSE )
+    moves[++mi] = up_down_scale[i]
+
+    mean_rt[i] := mean(branch_rates[i])
+
     ### the full phylogenetic CTMC
-    seq[i] ~ dnPhyloCTMC(tree=timetree, Q=Q[i], branchRates=branch_subrates[i], nSites=n_sites[i], siteRates=gamma_rates[i], type="DNA")
+    seq[i] ~ dnPhyloCTMC(tree=timetree, Q=Q[i], branchRates=branch_rates[i], nSites=n_sites[i], siteRates=gamma_rates[i], type="DNA")
 
     ### attach the observed sequence data
     seq[i].clamp(data[i])
@@ -401,13 +380,9 @@ mymodel = model(timetree)
 
 
 ### set up the monitors that will output parameter values to file and screen
-monitors[1] = mnFile(filename="output/ucln-run" + run_num + ".log", printgen=sample_freq,
-                            speciation, extinction, relative_extinction,  
-                            root_time, tmrca_Circeae, tmrca_Ludwigia,tmrca_Epilobium,tmrca_Lythraceae,tmrca_Skinnera,
-                            ucln_log_mean, ucln_sigma, mean_rt)
-monitors[2] = mnFile(filename="output/ucln-run" + run_num + ".trees", printgen=sample_freq, timetree)
-monitors[3] = mnScreen(printgen=sample_freq, mean_rt, ucln_log_mean, ucln_sigma, root_time, tmrca_Circeae)
-monitors[4] = mnModel(filename="output/ucln_model-run" + run_num + ".log",printgen=sample_freq)
+monitors[1] = mnFile(filename="output/ucln-run" + run_num + ".trees", printgen=sample_freq, timetree)
+monitors[2] = mnScreen(printgen=sample_freq, root_time, tmrca_Circeae, tmrca_Ludwigia, tmrca_Epilobium, tmrca_Lythraceae, tmrca_Skinnera)
+monitors[3] = mnModel(filename="output/ucln-run" + run_num + ".log", printgen=sample_freq)
 
 ### workspace mcmc ###
 mymcmc = mcmc(mymodel, monitors, moves)
