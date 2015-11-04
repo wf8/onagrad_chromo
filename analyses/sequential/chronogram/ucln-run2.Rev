@@ -90,7 +90,8 @@ for (i in 1:n_partitions) {
 
 # Sytsma et al 2004 estimate Lythraceae/Onagraceae split to be ~93 Ma
 # but give it a relatively uninformative prior of 82.0-150 (from the oldest Lythrum/Peplis fossil)
-root_time ~ dnUnif(82.0, 150.0)
+root_time ~ dnUnif(82.0, 400.0)
+root_time.setValue(starting_tree.rootAge())
 
 # add moves for root time
 moves[++mi] = mvSlide(root_time, delta=0.1, weight=5)
@@ -233,7 +234,7 @@ constraints = v(clade_Lythraceae, clade_Onagraceae, clade_Fuschia, clade_Skinner
 
 # Specify a prior on the diversification and relative extinction rate
 # using BEAST2 default priors
-speciation ~ dnUnif(0, 300)
+speciation ~ dnUnif(0, 200)
 speciation.setValue(1.0)
 relative_extinction ~ dnUnif(0, 1)
 relative_extinction.setValue(0.5)
@@ -341,6 +342,10 @@ stem_Circeae_fossil.clamp(-12.0)
 num_rate_categories = (2 * n_species) - 2
 rate_probs = simplex(rep(1, num_rate_categories))
 
+up_down_scale = mvUpDownScale(lambda=0.1, weight=60)
+up_down_scale.addVariable( timetree, TRUE )
+up_down_scale.addVariable( root_time, TRUE )
+
 for (i in 1:n_partitions) {
     ucln_mean[i] ~ dnUnif(1E-10, 2)
     ucln_mean[i].setValue(1.0)
@@ -359,11 +364,7 @@ for (i in 1:n_partitions) {
         moves[++mi] = mvMixtureAllocation(branch_rates[i][j], weight=20/n_branches)
     }
 
-    up_down_scale[i] = mvUpDownScale(lambda=0.1, weight=10)
-    up_down_scale[i].addVariable( timetree, TRUE )
-    up_down_scale[i].addVariable( root_time, TRUE )
-    up_down_scale[i].addVariable( ucln_mean[i], FALSE )
-    moves[++mi] = up_down_scale[i]
+    up_down_scale.addVariable( ucln_mean[i], FALSE )
 
     mean_rt[i] := mean(branch_rates[i])
 
@@ -374,6 +375,7 @@ for (i in 1:n_partitions) {
     seq[i].clamp(data[i])
 }
 
+moves[++mi] = up_down_scale
 
 ### finish model
 mymodel = model(timetree)
