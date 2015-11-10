@@ -3,7 +3,7 @@
 # and 5 node calibrations
 
 # set the run number
-run_num = 9 
+run_num = 1 
 
 # set the number of iterations to sample from MCMC
 sample_freq = 5
@@ -351,10 +351,10 @@ ucln_log_mean := ln( ucln_mean )
 #ucln_log_mean ~ dnUnif(-25, 25)
 ucln_sigma ~ dnExponential(1.0)
 
-moves[++mi] = mvScale(ucln_mean, lambda=0.1, weight=100)
-moves[++mi] = mvScale(ucln_sigma, lambda=0.1, weight=100)
+moves[++mi] = mvScale(ucln_mean, lambda=0.1, weight=40)
+moves[++mi] = mvScale(ucln_sigma, lambda=0.1, weight=40)
 
-up_down_scale_tree = mvUpDownScale(lambda=0.1, weight=100)
+up_down_scale_tree = mvUpDownScale(lambda=0.1, weight=40)
 up_down_scale_tree.addVariable( timetree, TRUE )
 up_down_scale_tree.addVariable( root_time, TRUE )
 up_down_scale_tree.addVariable( ucln_mean, FALSE )

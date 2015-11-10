@@ -1,9 +1,10 @@
 
 # script to estimate chronogram of Onagraceae using discretized UCLN model
 # and 5 node calibrations
+# with separate GTR+G and UCLN clock models for each partition
 
 # set the run number
-run_num = 1 
+run_num = 2 
 
 # set the number of iterations to sample from MCMC
 sample_freq = 5
@@ -340,75 +341,58 @@ stem_Circeae_fossil ~ dnLnorm(mu_cir, 2.0, offset=negative_tmrca_Circeae)
 stem_Circeae_fossil.clamp(-12.0)
 
 
-
-
-####### UCLN model on branch rates
-num_rate_categories = (2 * n_species) - 2
-rate_probs = simplex(rep(1, num_rate_categories))
-
-ucln_mean ~ dnExponential(1.0)
-#ucln_mean ~ dnUnif(1E-10, 2)
-ucln_mean.setValue(1.0)
-ucln_log_mean := ln( ucln_mean )
-#ucln_log_mean ~ dnUnif(-25, 25)
-ucln_sigma ~ dnExponential(1.0)
-
-moves[++mi] = mvScale(ucln_mean, lambda=0.1, weight=100)
-moves[++mi] = mvScale(ucln_sigma, lambda=0.1, weight=100)
-
 up_down_scale_tree = mvUpDownScale(lambda=0.1, weight=100)
 up_down_scale_tree.addVariable( timetree, TRUE )
 up_down_scale_tree.addVariable( root_time, TRUE )
-up_down_scale_tree.addVariable( ucln_mean, FALSE )
-moves[++mi] = up_down_scale_tree
 
-# use discretized lognormal
-rate_categories := fnDiscretizeDistribution(dnLnorm(ucln_mean, ucln_sigma), num_rate_categories)
-for (j in 1:n_branches) {
-
-    # for each branch pull from one of the rate categories
-    branch_rates[j] ~ dnMixture(rate_categories, rate_probs)
-    moves[++mi] = mvMixtureAllocation(branch_rates[j], weight=20/n_branches)
-}
-
-mean_rt := mean(branch_rates)
-
-up_down_scale_tree2 = mvUpDownScale(lambda=0.1, weight=100)
-up_down_scale_tree2.addVariable( timetree, TRUE )
-up_down_scale_tree2.addVariable( root_time, TRUE )
-
-up_down_scale_rates = mvUpDownScale(lambda=0.1, weight=100)
-up_down_scale_rates.addVariable( ucln_mean, TRUE )
+####### UCLN model on branch rates for each partition
+num_rate_categories = n_branches
+rate_probs = simplex(rep(1, num_rate_categories))
 
 for (i in 1:n_partitions) {
 
-    # the branch-rates used in the phylogenetic CTMC are a function of the UCLN branch rates and the base rate for this partition
-    base_rate[i] ~ dnExponential(1.0)
-    base_rate[i].setValue(1.0)
-    moves[++mi] = mvScale(base_rate[i], lambda=0.1, weight=20)
-    up_down_scale_tree2.addVariable( base_rate[i], FALSE )
-    up_down_scale_rates.addVariable( base_rate[i], FALSE )
+    ucln_mean[i] ~ dnExponential(1.0)
+    #ucln_mean[i] ~ dnUnif(1E-10, 2)
+    ucln_mean[i].setValue(1.0)
+    ucln_log_mean[i] := ln( ucln_mean[i] )
+    #ucln_log_mean[i] ~ dnUnif(-25, 25)
+    ucln_sigma[i] ~ dnExponential(1.0)
 
-    branch_subrates[i] := branch_rates * base_rate[i]
+    moves[++mi] = mvScale(ucln_mean[i], lambda=0.1, weight=20)
+    moves[++mi] = mvScale(ucln_sigma[i], lambda=0.1, weight=20)
+
+    up_down_scale_tree.addVariable( ucln_mean[i], FALSE )
+
+    # use discretized lognormal
+    rate_categories[i] := fnDiscretizeDistribution(dnLnorm(ucln_mean[i], ucln_sigma[i]), num_rate_categories)
+    for (j in 1:n_branches) {
+
+        # for each branch pull from one of the rate categories
+        branch_rates[i][j] ~ dnMixture(rate_categories[i], rate_probs)
+        moves[++mi] = mvMixtureAllocation(branch_rates[i][j], weight=20/n_branches)
+
+    }
+
+    mean_rt[i] := mean(branch_rates[i])
 
     ### the full phylogenetic CTMC
-    seq[i] ~ dnPhyloCTMC(tree=timetree, Q=Q[i], branchRates=branch_subrates[i], nSites=n_sites[i], siteRates=gamma_rates[i], type="DNA")
+    seq[i] ~ dnPhyloCTMC(tree=timetree, Q=Q[i], branchRates=branch_rates[i], nSites=n_sites[i], siteRates=gamma_rates[i], type="DNA")
 
     ### attach the observed sequence data
     seq[i].clamp(data[i])
+
 }
 
-moves[++mi] = up_down_scale_tree2
-moves[++mi] = up_down_scale_rates
+moves[++mi] = up_down_scale_tree
 
 ### finish model
 mymodel = model(timetree)
 
 
 ### set up the monitors that will output parameter values to file and screen
-monitors[1] = mnFile(filename="output/ucln-run" + run_num + ".trees", printgen=sample_freq, timetree)
+monitors[1] = mnFile(filename="output/multi-ucln-run" + run_num + ".trees", printgen=sample_freq, timetree)
 monitors[2] = mnScreen(printgen=sample_freq, root_time, tmrca_Circeae, tmrca_Ludwigia, tmrca_Epilobium, tmrca_Lythraceae, tmrca_Skinnera)
-monitors[3] = mnModel(filename="output/ucln-run" + run_num + ".log", printgen=sample_freq)
+monitors[3] = mnModel(filename="output/multi-ucln-run" + run_num + ".log", printgen=sample_freq)
 
 ### workspace mcmc ###
 mymcmc = mcmc(mymodel, monitors, moves)
