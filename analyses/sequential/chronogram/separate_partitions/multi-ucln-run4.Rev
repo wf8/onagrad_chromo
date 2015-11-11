@@ -4,7 +4,7 @@
 # with separate GTR+G for each partition
 
 # set the run number
-run_num = 1 
+run_num = 4 
 
 # set the number of iterations to sample from MCMC
 sample_freq = 5
@@ -262,8 +262,8 @@ timetree ~ dnBDP(lambda=speciation, mu=extinction, rho=0.27, rootAge=abs(root_ti
 timetree.setValue(starting_tree)
 
 # add moves on the tree node times
-moves[++mi] = mvNodeTimeSlideUniform(timetree, weight=10)
-moves[++mi] = mvNodeTimeScale(timetree, lambda=0.1, weight=10)
+moves[++mi] = mvNodeTimeSlideUniform(timetree, weight=40)
+moves[++mi] = mvNodeTimeScale(timetree, lambda=0.1, weight=40)
 #moves[++mi] = mvTreeScale(tree=timetree, rootAge=root_time, delta=0.1, weight=5)
 moves[++mi] = mvSubtreeScale(timetree, weight=10)
 
