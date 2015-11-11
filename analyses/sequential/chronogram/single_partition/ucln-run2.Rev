@@ -89,12 +89,14 @@ moves[++mi] = mvScale(alpha, lambda=0.1, weight=10)
 
 # Sytsma et al 2004 estimate Lythraceae/Onagraceae split to be ~93 Ma
 # but give it a relatively uninformative prior of 82.0-200 (from the oldest Lythrum/Peplis fossil)
-root_time ~ dnUnif(82.0, 200.0)
+# or we'll try a uniform centered at 93 Ma
+#root_time ~ dnUnif(82.0, 200.0)
+root_time ~ dnNormal(mean=93, sd=10)
 root_time.setValue(starting_tree.rootAge())
 
 # add moves for root time
 moves[++mi] = mvSlide(root_time, delta=0.1, weight=5)
-moves[++mi] = mvScale(root_time, lambda=0.1, weight=5)
+#moves[++mi] = mvScale(root_time, lambda=0.1, weight=5)
 
 # topology constraints for the internal node calibrations:
 
@@ -251,7 +253,7 @@ moves[++mi] = mvScale(relative_extinction, lambda=0.1, weight=3)
 # we have 340 tips in our sample. so rho = 340/1270 ~ 0.27
 
 # the time tree is a stochastic node modeled by the constant rate birth-death process 
-timetree ~ dnBDP(lambda=speciation, mu=extinction, rho=0.27, rootAge=root_time, nTaxa=n_species, names=names, constraints=constraints)
+timetree ~ dnBDP(lambda=speciation, mu=extinction, rho=0.27, rootAge=abs(root_time), nTaxa=n_species, names=names, constraints=constraints)
 
 # use the starting tree consistent with the clade constraints
 timetree.setValue(starting_tree)
@@ -259,7 +261,7 @@ timetree.setValue(starting_tree)
 # add moves on the tree node times
 moves[++mi] = mvNodeTimeSlideUniform(timetree, weight=10)
 moves[++mi] = mvNodeTimeScale(timetree, lambda=0.1, weight=10)
-moves[++mi] = mvTreeScale(tree=timetree, rootAge=root_time, delta=0.1, weight=5)
+#moves[++mi] = mvTreeScale(tree=timetree, rootAge=root_time, delta=0.1, weight=5)
 moves[++mi] = mvSubtreeScale(timetree, weight=10)
 
 # and moves for the tree topology
