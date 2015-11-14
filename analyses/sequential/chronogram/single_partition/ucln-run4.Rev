@@ -343,7 +343,7 @@ stem_Circeae_fossil.clamp(-12.0)
 
 
 ####### UCLN model on branch rates
-num_rate_categories = (2 * n_species) - 2
+num_rate_categories = 100 #(2 * n_species) - 2
 rate_probs = simplex(rep(1, num_rate_categories))
 
 ucln_mean ~ dnExponential(1.0)
@@ -351,7 +351,8 @@ ucln_mean ~ dnExponential(1.0)
 ucln_mean.setValue(1.0)
 ucln_log_mean := ln( ucln_mean )
 #ucln_log_mean ~ dnUnif(-25, 25)
-ucln_sigma ~ dnExponential(1.0)
+ucln_sigma ~ dnExponential(4.0)
+ucln_sigma.setValue(0.25)
 
 moves[++mi] = mvScale(ucln_mean, lambda=0.1, weight=40)
 moves[++mi] = mvScale(ucln_sigma, lambda=0.1, weight=40)
@@ -363,7 +364,7 @@ up_down_scale_tree.addVariable( ucln_mean, FALSE )
 moves[++mi] = up_down_scale_tree
 
 # use discretized lognormal
-rate_categories := fnDiscretizeDistribution(dnLnorm(ucln_mean, ucln_sigma), num_rate_categories)
+rate_categories := fnDiscretizeDistribution(dnLnorm(ucln_log_mean, ucln_sigma), num_rate_categories)
 for (j in 1:n_branches) {
 
     # for each branch pull from one of the rate categories
