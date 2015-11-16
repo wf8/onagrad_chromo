@@ -265,13 +265,13 @@ timetree.setValue(starting_tree)
 moves[++mi] = mvNodeTimeSlideUniform(timetree, weight=20)
 moves[++mi] = mvNodeTimeScale(timetree, lambda=0.1, weight=20)
 #moves[++mi] = mvTreeScale(tree=timetree, rootAge=root_time, delta=0.1, weight=5)
-moves[++mi] = mvSubtreeScale(timetree, weight=10)
+moves[++mi] = mvSubtreeScale(timetree, weight=20)
 
 # and moves for the tree topology
-moves[++mi] = mvNNI(timetree, weight=20)
-moves[++mi] = mvNarrow(timetree, weight=20)
-moves[++mi] = mvFNPR(timetree, weight=20)
-moves[++mi] = mvGPR(timetree, weight=10)
+moves[++mi] = mvNNI(timetree, weight=40)
+moves[++mi] = mvNarrow(timetree, weight=40)
+moves[++mi] = mvFNPR(timetree, weight=40)
+moves[++mi] = mvGPR(timetree, weight=40)
 
 
 
@@ -347,22 +347,25 @@ stem_Circeae_fossil.clamp(-12.0)
 num_rate_categories = 100 #n_branches
 rate_probs = simplex(rep(1, num_rate_categories))
 
-ucln_mean ~ dnExponential(1.0)
-#ucln_mean ~ dnUnif(1E-10, 2)
-ucln_mean.setValue(1.0)
-ucln_log_mean := ln( ucln_mean )
-#ucln_log_mean ~ dnUnif(-25, 25)
-ucln_sigma ~ dnExponential(4.0)
-ucln_sigma.setValue(0.25)
-
-moves[++mi] = mvScale(ucln_mean, lambda=0.1, weight=20)
-moves[++mi] = mvScale(ucln_sigma, lambda=0.1, weight=20)
-
-up_down_scale_tree = mvUpDownScale(lambda=0.1, weight=100)
+#ucln_mean ~ dnExponential(1.0)
+##ucln_mean ~ dnUnif(1E-10, 2)
+#ucln_mean.setValue(1.0)
+#ucln_log_mean := ln( ucln_mean )
+##ucln_log_mean ~ dnUnif(-25, 25)
+#ucln_sigma ~ dnExponential(4.0)
+#ucln_sigma.setValue(0.25)
+#
+#moves[++mi] = mvScale(ucln_mean, lambda=0.05, weight=20)
+#moves[++mi] = mvScale(ucln_sigma, lambda=0.05, weight=20)
+#
+up_down_scale_tree = mvUpDownScale(lambda=0.001, weight=100)
 up_down_scale_tree.addVariable( timetree, TRUE )
 up_down_scale_tree.addVariable( root_time, TRUE )
-up_down_scale_tree.addVariable( ucln_mean, FALSE )
-moves[++mi] = up_down_scale_tree
+#up_down_scale_tree.addVariable( ucln_mean, FALSE )
+#moves[++mi] = up_down_scale_tree
+
+ucln_log_mean <- 0.0
+ucln_sigma <- 0.25
 
 # use discretized lognormal
 rate_categories := fnDiscretizeDistribution(dnLnorm(ucln_log_mean, ucln_sigma), num_rate_categories)
@@ -370,7 +373,7 @@ for (j in 1:n_branches) {
 
     # for each branch pull from one of the rate categories
     branch_rates[j] ~ dnMixture(rate_categories, rate_probs)
-    moves[++mi] = mvMixtureAllocation(branch_rates[j], weight=20/n_branches)
+    moves[++mi] = mvMixtureAllocation(branch_rates[j], weight=60/n_branches)
 
 }
 
@@ -378,23 +381,24 @@ mean_rt := mean(branch_rates)
 
 for (i in 1:n_partitions) {
 
-    if (i > 1) {
+#    if (i > 1) {
 
         # base rates for partition
         base_rate[i] ~ dnExponential(1.0)
         base_rate[i].setValue(1.0)
-        moves[++mi] = mvScale(base_rate[i], lambda=0.1, weight=5)
-        moves[++mi] = mvSlide(base_rate[i], delta=0.1, weight=5)
+        moves[++mi] = mvScale(base_rate[i], lambda=0.1, weight=10)
+        moves[++mi] = mvSlide(base_rate[i], delta=0.1, weight=10)
+        up_down_scale_tree.addVariable( base_rate[i], FALSE )
 
         # the branch-rates used in the phylogenetic CTMC are a function of the UCLN branch rates and the base rate for this partition
         branch_subrates[i] := branch_rates * base_rate[i]
     
-    } else {
-
-        # base rate for partition 1 = 1.0
-        branch_subrates[i] := branch_rates
-
-    }
+#    } else {
+#
+#        # base rate for partition 1 = 1.0
+#        branch_subrates[i] := branch_rates
+#
+#    }
 
     ### the full phylogenetic CTMC
     seq[i] ~ dnPhyloCTMC(tree=timetree, Q=Q[i], branchRates=branch_subrates[i], nSites=n_sites[i], siteRates=gamma_rates[i], type="DNA")
@@ -403,6 +407,7 @@ for (i in 1:n_partitions) {
     seq[i].clamp(data[i])
 
 }
+moves[++mi] = up_down_scale_tree
 
 ### finish model
 mymodel = model(timetree)
