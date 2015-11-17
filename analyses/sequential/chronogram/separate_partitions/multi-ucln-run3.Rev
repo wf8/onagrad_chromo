@@ -4,7 +4,7 @@
 # with separate GTR+G for each partition
 
 # set the run number
-run_num = 3 
+run_num = 1 
 
 # set the number of iterations to sample from MCMC
 sample_freq = 5
@@ -29,7 +29,7 @@ for (i in 1:n_partitions) {
 }
 
 # get a tree consistent with the clade constraints
-starting_tree <- readTrees("starting_tree.tree")[1]
+starting_tree <- readTrees("starting_tree2.tree")[1]
 
 # get variables from alignments
 n_species = data[1].ntaxa()
@@ -64,14 +64,20 @@ for (i in 1:n_partitions) {
     gt[i].setValue(1.0)
 
     moves[++mi] = mvScale(ac[i], lambda=0.1, weight=5)
+    moves[++mi] = mvScale(ac[i], lambda=0.01, weight=5)
     moves[++mi] = mvScale(ag[i], lambda=0.1, weight=5)
+    moves[++mi] = mvScale(ag[i], lambda=0.01, weight=5)
     moves[++mi] = mvScale(at[i], lambda=0.1, weight=5)
+    moves[++mi] = mvScale(at[i], lambda=0.01, weight=5)
     moves[++mi] = mvScale(cg[i], lambda=0.1, weight=5)
+    moves[++mi] = mvScale(cg[i], lambda=0.01, weight=5)
     moves[++mi] = mvScale(gt[i], lambda=0.1, weight=5)
+    moves[++mi] = mvScale(gt[i], lambda=0.01, weight=5)
 
     sf_prior[i] <- v(1,1,1,1)
     sf[i] ~ dnDirichlet(sf_prior[i])
     moves[++mi] = mvSimplexElementScale(sf[i], alpha=0.1, weight=5)
+    moves[++mi] = mvSimplexElementScale(sf[i], alpha=0.01, weight=5)
 
     # create a deterministic variable for the rate matrix
     Q[i] := fnGTR(er[i],sf[i])
@@ -80,7 +86,8 @@ for (i in 1:n_partitions) {
     alpha_prior[i] <- 1.0
     alpha[i] ~ dnExponential( alpha_prior[i] )
     gamma_rates[i] := fnDiscretizeGamma( alpha[i], alpha[i], 4, false )
-    moves[++mi] = mvScale(alpha[i], lambda=0.1, weight=10)
+    moves[++mi] = mvScale(alpha[i], lambda=0.1, weight=5)
+    moves[++mi] = mvScale(alpha[i], lambda=0.01, weight=5)
 
 }
 
@@ -347,22 +354,9 @@ stem_Circeae_fossil.clamp(-12.0)
 num_rate_categories = 100 #n_branches
 rate_probs = simplex(rep(1, num_rate_categories))
 
-#ucln_mean ~ dnExponential(1.0)
-##ucln_mean ~ dnUnif(1E-10, 2)
-#ucln_mean.setValue(1.0)
-#ucln_log_mean := ln( ucln_mean )
-##ucln_log_mean ~ dnUnif(-25, 25)
-#ucln_sigma ~ dnExponential(4.0)
-#ucln_sigma.setValue(0.25)
-#
-#moves[++mi] = mvScale(ucln_mean, lambda=0.05, weight=20)
-#moves[++mi] = mvScale(ucln_sigma, lambda=0.05, weight=20)
-#
 up_down_scale_tree = mvUpDownScale(lambda=0.001, weight=100)
 up_down_scale_tree.addVariable( timetree, TRUE )
 up_down_scale_tree.addVariable( root_time, TRUE )
-#up_down_scale_tree.addVariable( ucln_mean, FALSE )
-#moves[++mi] = up_down_scale_tree
 
 ucln_log_mean <- 0.0
 ucln_sigma <- 0.25
@@ -373,7 +367,7 @@ for (j in 1:n_branches) {
 
     # for each branch pull from one of the rate categories
     branch_rates[j] ~ dnMixture(rate_categories, rate_probs)
-    moves[++mi] = mvMixtureAllocation(branch_rates[j], weight=60/n_branches)
+    moves[++mi] = mvMixtureAllocation(branch_rates[j], delta=1, weight=60/n_branches)
 
 }
 
@@ -381,24 +375,17 @@ mean_rt := mean(branch_rates)
 
 for (i in 1:n_partitions) {
 
-#    if (i > 1) {
+    base_rate[i] ~ dnExponential(10.0)
+    base_rate[i].setValue(1.0)
+    moves[++mi] = mvScale(base_rate[i], lambda=0.01, weight=5)
+    moves[++mi] = mvScale(base_rate[i], lambda=0.01, weight=5)
+    moves[++mi] = mvSlide(base_rate[i], delta=0.1, weight=10)
+    moves[++mi] = mvSlide(base_rate[i], delta=0.1, weight=10)
+    up_down_scale_tree.addVariable( base_rate[i], FALSE )
 
-        # base rates for partition
-        base_rate[i] ~ dnExponential(1.0)
-        base_rate[i].setValue(1.0)
-        moves[++mi] = mvScale(base_rate[i], lambda=0.1, weight=10)
-        moves[++mi] = mvSlide(base_rate[i], delta=0.1, weight=10)
-        up_down_scale_tree.addVariable( base_rate[i], FALSE )
-
-        # the branch-rates used in the phylogenetic CTMC are a function of the UCLN branch rates and the base rate for this partition
-        branch_subrates[i] := branch_rates * base_rate[i]
+    # the branch-rates used in the phylogenetic CTMC are a function of the UCLN branch rates and the base rate for this partition
+    branch_subrates[i] := branch_rates * base_rate[i]
     
-#    } else {
-#
-#        # base rate for partition 1 = 1.0
-#        branch_subrates[i] := branch_rates
-#
-#    }
 
     ### the full phylogenetic CTMC
     seq[i] ~ dnPhyloCTMC(tree=timetree, Q=Q[i], branchRates=branch_subrates[i], nSites=n_sites[i], siteRates=gamma_rates[i], type="DNA")
