@@ -4,7 +4,7 @@
 # with separate GTR+G for each partition
 
 # set the run number
-run_num = 1 
+run_num = 3 
 
 # set the number of iterations to sample from MCMC
 sample_freq = 5
