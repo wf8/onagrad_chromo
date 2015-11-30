@@ -391,12 +391,12 @@ mymodel = model(timetree)
 
 
 ### set up the monitors that will output parameter values to file and screen
-monitors[1] = mnFile(filename="output/multi-ucln-run" + run_num + ".trees", printgen=sample_freq, timetree)
+monitors[1] = mnFile(filename="output/mcmcmc" + run_num + ".trees", printgen=sample_freq, timetree)
 monitors[2] = mnScreen(printgen=1, root_time, tmrca_Circeae, tmrca_Ludwigia, tmrca_Epilobium, tmrca_Lythraceae, tmrca_Skinnera)
-monitors[3] = mnModel(filename="output/multi-ucln-run" + run_num + ".log", printgen=sample_freq)
+monitors[3] = mnModel(filename="output/mcmcmc" + run_num + ".log", printgen=sample_freq)
 
 ### workspace mcmc ###
-mymcmc = mcmc(mymodel, monitors, moves)
+mymcmc = mcmcmc(mymodel, monitors, moves, nchains=4)
 
 ### pre-burnin to tune the proposals ###
 #mymcmc.burnin(generations=1000, tuningInterval=10)
