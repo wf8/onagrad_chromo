@@ -258,7 +258,7 @@ moves[++mi] = mvScale(relative_extinction, lambda=0.1, weight=3)
 timetree ~ dnBDP(lambda=speciation, mu=extinction, rho=0.27, rootAge=abs(root_time), nTaxa=n_species, names=names, constraints=constraints)
 
 # use the starting tree consistent with the clade constraints
-#timetree.setValue(starting_tree)
+timetree.setValue(starting_tree)
 
 # add moves on the tree node times
 moves[++mi] = mvNodeTimeSlideUniform(timetree, weight=20)
