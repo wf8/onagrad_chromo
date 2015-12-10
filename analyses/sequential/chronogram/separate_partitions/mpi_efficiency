@@ -1,0 +1,33 @@
+
+
+# results
+
+use 32 processors, aim for 4000 samples per 48 hour run
+
+# on gordon (MPI)
+
+run 1: 96 processor
+
+468 / 7:59 = 0.98
+
+run 2: 256 processor
+
+119 / 2:58 = 0.67
+
+run 3: 32 processor
+
+1865 / 22:14 = 1.40
+
+run 4: 16 processor
+
+745 / 16:12 = 0.77
+
+run 5: 48 processor
+
+1531 / 17:11 = 1.49
+
+
+# on voltron (1 processor, no MPI)
+
+255:50 - 251:14 = 4:36
+100 / 4:36 = 0.36
