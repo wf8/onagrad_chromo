@@ -6,9 +6,6 @@
 # base directory
 base_dir = "/home/freyman/projects/onagrad_chromo/analyses/sequential/chronogram/separate_partitions/"
 
-# set the run number
-run_num = 1 
-
 ########## Read in data
 
 filenames = v("alignments/ITS.fasta", 
