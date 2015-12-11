@@ -1,0 +1,10 @@
+
+# set the chain number
+chain_num = 1
+
+# set the run number
+run_num = 1 
+
+starting_tree <- readTrees(base_dir + "starting_tree3.tree")[1]
+timetree.setValue(starting_tree)
+

@@ -3,11 +3,11 @@
 # and 5 node calibrations
 # with separate GTR+G for each partition
 
+# base directory
+base_dir = "/home/freyman/projects/onagrad_chromo/analyses/sequential/chronogram/separate_partitions/"
+
 # set the run number
 run_num = 1 
-
-# set the number of iterations to sample from MCMC
-sample_freq = 5
 
 ########## Read in data
 
@@ -23,16 +23,13 @@ filenames = v("alignments/ITS.fasta",
 n_partitions = filenames.size()
 
 for (i in 1:n_partitions) {
-    data[i] = readDiscreteCharacterData(filenames[i])
+    data[i] = readDiscreteCharacterData(base_dir + filenames[i])
     n_sites[i] <- data[i].nchar()
 }
 
-# get a tree consistent with the clade constraints
-starting_tree <- readTrees("starting_tree3.tree")[1]
-
 # get variables from alignments
 n_species = data[1].ntaxa()
-names = data[1].names()
+taxa = data[1].taxa()
 n_branches = 2 * n_species - 2
 
 # set up an index for our MCMC moves
@@ -94,11 +91,9 @@ for (i in 1:n_partitions) {
 # or we'll try a normal centered around 93 Ma
 #root_time ~ dnUnif(82.0, 200.0)
 root_time ~ dnNormal(mean=93, sd=5.0)
-root_time.setValue(starting_tree.rootAge())
 
 # add moves for root time
 moves[++mi] = mvSlide(root_time, delta=0.1, weight=5)
-#moves[++mi] = mvScale(root_time, lambda=0.1, weight=5)
 
 # topology constraints for the internal node calibrations:
 
@@ -156,16 +151,16 @@ taxa_Lythraceae=["Adenaria_floribunda",
 clade_Lythraceae = clade(taxa=taxa_Lythraceae, age=82)
 
 k = 1
-for (i in 1:names.size()) {
+for (i in 1:taxa.size()) {
     found = false
     for (j in 1:taxa_Lythraceae.size()) {
-        if (names[i] == taxa_Lythraceae[j]) {
+        if (taxa[i].getSpeciesName() == taxa_Lythraceae[j]) {
             found = true
             break
         }
     }
     if (!found) {
-        taxa_Onagraceae[k] = names[i]
+        taxa_Onagraceae[k] = taxa[i].getSpeciesName()
         k += 1
     }
 }
@@ -255,15 +250,12 @@ moves[++mi] = mvScale(relative_extinction, lambda=0.1, weight=3)
 # we have 340 tips in our sample. so rho = 340/1270 ~ 0.27
 
 # the time tree is a stochastic node modeled by the constant rate birth-death process 
-timetree ~ dnBDP(lambda=speciation, mu=extinction, rho=0.27, rootAge=abs(root_time), nTaxa=n_species, names=names, constraints=constraints)
-
-# use the starting tree consistent with the clade constraints
-timetree.setValue(starting_tree)
+bdp = dnBDP(lambda=speciation, mu=extinction, rho=0.27, rootAge=abs(root_time), taxa=taxa)
+timetree ~ dnConstrainedTopology(treeDistribution=bdp, constraints)
 
 # add moves on the tree node times
 moves[++mi] = mvNodeTimeSlideUniform(timetree, weight=20)
 moves[++mi] = mvNodeTimeScale(timetree, lambda=0.1, weight=20)
-#moves[++mi] = mvTreeScale(tree=timetree, rootAge=root_time, delta=0.1, weight=5)
 moves[++mi] = mvSubtreeScale(timetree, weight=20)
 
 # and moves for the tree topology
@@ -343,34 +335,30 @@ stem_Circeae_fossil.clamp(-12.0)
 
 
 ####### UCLN model on branch rates
-num_rate_categories = 100 #n_branches
-rate_probs = simplex(rep(1, num_rate_categories))
-
-up_down_scale_tree = mvUpDownScale(lambda=0.1, weight=100)
-up_down_scale_tree.addVariable( timetree, TRUE )
-up_down_scale_tree.addVariable( root_time, TRUE )
 
 ucln_log_mean <- 0.0
 ucln_sigma <- 0.25
 
-# use discretized lognormal
-rate_categories := fnDiscretizeDistribution(dnLnorm(ucln_log_mean, ucln_sigma), num_rate_categories)
+# pull rates for each branch from lognormal
 for (j in 1:n_branches) {
 
-    # for each branch pull from one of the rate categories
-    branch_rates[j] ~ dnMixture(rate_categories, rate_probs)
-    moves[++mi] = mvMixtureAllocation(branch_rates[j], delta=1, weight=60/n_branches)
+    branch_rates[j] ~ dnLnorm(ucln_log_mean, ucln_sigma)
+    moves[++mi] = mvSlide(branch_rates[j], delta=0.1, weight=60/n_branches)
 
 }
 
 mean_rt := mean(branch_rates)
 
+up_down_scale_tree = mvUpDownScale(lambda=0.1, weight=100)
+up_down_scale_tree.addVariable( timetree, TRUE )
+up_down_scale_tree.addVariable( root_time, TRUE )
+
+# base rates for each partition
 for (i in 1:n_partitions) {
 
     base_rate[i] ~ dnExponential(10.0)
     base_rate[i].setValue(1.0)
-    moves[++mi] = mvSlide(base_rate[i], delta=0.1, weight=10)
-    moves[++mi] = mvSlide(base_rate[i], delta=0.1, weight=10)
+    moves[++mi] = mvSlide(base_rate[i], delta=0.1, weight=20)
     up_down_scale_tree.addVariable( base_rate[i], FALSE )
 
     # the branch-rates used in the phylogenetic CTMC are a function of the UCLN branch rates and the base rate for this partition
@@ -385,32 +373,4 @@ for (i in 1:n_partitions) {
 
 }
 moves[++mi] = up_down_scale_tree
-
-### finish model
-mymodel = model(timetree)
-
-
-### set up the monitors that will output parameter values to file and screen
-monitors[1] = mnFile(filename="output/mcmcmc" + run_num + ".trees", printgen=sample_freq, timetree)
-monitors[2] = mnScreen(printgen=1, root_time, tmrca_Circeae, tmrca_Ludwigia, tmrca_Epilobium, tmrca_Lythraceae, tmrca_Skinnera)
-monitors[3] = mnModel(filename="output/mcmcmc" + run_num + ".log", printgen=sample_freq)
-
-### workspace mcmc ###
-mymcmc = mcmcmc(mymodel, monitors, moves, nchains=4)
-
-### pre-burnin to tune the proposals ###
-#mymcmc.burnin(generations=1000, tuningInterval=10)
-
-### run the MCMC ###
-mymcmc.run(generations=10000000)
-
-### display proposal acceptance rates and tuning ###
-#mymcmc.operatorSummary()
-
-### summarize the trees ###
-#tt = readTreeTrace("output/UCLN.trees", "clock")
-#tt.summarize()
-
-### write MAP tree to file
-#mapTree(tt, "output/UCLN_MAP.tre")
 

@@ -1,0 +1,24 @@
+
+# set the number of iterations in this chain segment
+n_iterations = 4000
+
+# set the number of iterations to sample from MCMC
+sample_freq = 5
+
+### finish model
+mymodel = model(timetree)
+
+### set up the monitors that will output parameter values to file and screen
+monitors[1] = mnFile(filename=base_dir + "output/" + chain_num + "-" + run_num + ".trees", printgen=sample_freq, timetree)
+monitors[2] = mnScreen(printgen=1, root_time, tmrca_Circeae, tmrca_Ludwigia, tmrca_Epilobium, tmrca_Lythraceae, tmrca_Skinnera)
+monitors[3] = mnModel(filename=base_dir + "output/" + chain_num + "-" + run_num + ".log", printgen=sample_freq)
+monitors[4] = mnFile(printgen=1, filename=base_dir + "output/screen" + chain_num + "-" + run_num + ".log", root_time, tmrca_Circeae, tmrca_Ludwigia, tmrca_Epilobium, tmrca_Lythraceae, tmrca_Skinnera)
+
+### workspace mcmc ###
+mymcmc = mcmc(mymodel, monitors, moves)
+
+### run the MCMC ###
+mymcmc.run(generations=n_iternations)
+
+q()
+
