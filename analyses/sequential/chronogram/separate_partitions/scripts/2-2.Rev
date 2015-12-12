@@ -1,0 +1,1150 @@
+
+# script to estimate chronogram of Onagraceae using discretized UCLN model
+# and 5 node calibrations
+# with separate GTR+G for each partition
+
+# base directory
+base_dir = "/home/freyman/projects/onagrad_chromo/analyses/sequential/chronogram/separate_partitions/"
+
+########## Read in data
+
+filenames = v("alignments/ITS.fasta", 
+              "alignments/matK.fasta",
+              "alignments/ndhF.fasta",
+              "alignments/pgiC.fasta",
+              "alignments/rbcL.fasta",
+              "alignments/rpl16.fasta",
+              "alignments/rps16.fasta",
+              "alignments/trnL.fasta")
+
+n_partitions = filenames.size()
+
+for (i in 1:n_partitions) {
+    data[i] = readDiscreteCharacterData(base_dir + filenames[i])
+    n_sites[i] <- data[i].nchar()
+}
+
+# get variables from alignments
+n_species = data[1].ntaxa()
+taxa = data[1].taxa()
+n_branches = 2 * n_species - 2
+
+# set up an index for our MCMC moves
+mi = 0
+
+
+
+########## substition models
+
+
+for (i in 1:n_partitions) {
+    
+    # specify the GTR+GAMMA substitution model for each partition 
+    
+    # use BEAST2 prior
+    ac[i] ~ dnGamma(0.05, 10.0)
+    ag[i] ~ dnGamma(0.05, 20.0)
+    at[i] ~ dnGamma(0.05, 10.0)
+    cg[i] ~ dnGamma(0.05, 10.0)
+    ct[i] <- 1.0
+    gt[i] ~ dnGamma(0.05, 10.0)
+    er[i] := simplex(ac[i], ag[i], at[i], cg[i], ct[i], gt[i])
+
+    ac[i].setValue(1.0)
+    ag[i].setValue(1.0)
+    at[i].setValue(1.0)
+    cg[i].setValue(1.0)
+    gt[i].setValue(1.0)
+
+    moves[++mi] = mvScale(ac[i], lambda=0.1, weight=5)
+    moves[++mi] = mvScale(ag[i], lambda=0.1, weight=5)
+    moves[++mi] = mvScale(at[i], lambda=0.1, weight=5)
+    moves[++mi] = mvScale(cg[i], lambda=0.1, weight=5)
+    moves[++mi] = mvScale(gt[i], lambda=0.1, weight=5)
+
+    sf_prior[i] <- v(1,1,1,1)
+    sf[i] ~ dnDirichlet(sf_prior[i])
+    moves[++mi] = mvSimplexElementScale(sf[i], alpha=0.1, weight=5)
+
+    # create a deterministic variable for the rate matrix
+    Q[i] := fnGTR(er[i],sf[i])
+
+    # add among site rate variation
+    alpha_prior[i] <- 1.0
+    alpha[i] ~ dnExponential( alpha_prior[i] )
+    gamma_rates[i] := fnDiscretizeGamma( alpha[i], alpha[i], 4, false )
+    moves[++mi] = mvScale(alpha[i], lambda=0.1, weight=5)
+
+}
+
+
+
+
+###### calibration points
+
+
+# Sytsma et al 2004 estimate Lythraceae/Onagraceae split to be ~93 Ma
+# but give it a relatively uninformative prior of 82.0-200 (from the oldest Lythrum/Peplis fossil)
+# or we'll try a normal centered around 93 Ma
+#root_time ~ dnUnif(82.0, 200.0)
+root_time ~ dnNormal(mean=93, sd=5.0)
+
+# add moves for root time
+moves[++mi] = mvSlide(root_time, delta=0.1, weight=5)
+
+# topology constraints for the internal node calibrations:
+
+# the oldest fossils in Lythracea are
+# Lythrum/Peplis 81.5 Ma (Graham 2013) 
+# Stem calibration.
+taxa_Lythraceae=["Adenaria_floribunda",
+        "Ammannia_baccifera",
+        "Ammannia_coccinea",
+        "Ammannia_latifolia",
+        "Ammannia_prieuriana",
+        "Ammannia_robusta",
+        "Capuronia_madagascariensis",
+        "Cuphea_appendiculata",
+        "Cuphea_carthagenensis",
+        "Cuphea_hyssopifolia",
+        "Cuphea_viscosissima",
+        "Decodon_verticillatus",
+        "Duabanga_grandiflora",
+        "Duabanga_moluccana",
+        "Galpinia_transvaalica",
+        "Heimia_montana",
+        "Heimia_myrtifolia",
+        "Heimia_salicifolia",
+        "Koehneria_madagascariensis",
+        "Lafoensia_acuminata",
+        "Lagerstroemia_indica",
+        "Lagerstroemia_parviflora",
+        "Lagerstroemia_speciosa",
+        "Lawsonia_inermis",
+        "Lythrum_borysthenicum",
+        "Lythrum_flagellare",
+        "Lythrum_hyssopifolia",
+        "Lythrum_junceum",
+        "Lythrum_maritimum",
+        "Lythrum_portula",
+        "Lythrum_salicaria",
+        "Nesaea_aspera",
+        "Pehria_compacta",
+        "Pemphis_acidula",
+        "Peplis_portula",
+        "Physocalymma_scaberrimum",
+        "Pleurophora_anomala",
+        "Punica_granatum",
+        "Rotala_indica",
+        "Rotala_ramosior",
+        "Rotala_rotundifolia",
+        "Sonneratia_alba",
+        "Sonneratia_apetala",
+        "Sonneratia_caseolaris",
+        "Sonneratia_ovata",
+        "Trapa_natans",
+        "Trapa_maximowiczii",
+        "Woodfordia_fruticosa"]
+clade_Lythraceae = clade(taxa=taxa_Lythraceae, age=82)
+
+k = 1
+for (i in 1:taxa.size()) {
+    found = false
+    for (j in 1:taxa_Lythraceae.size()) {
+        if (taxa[i].getSpeciesName() == taxa_Lythraceae[j]) {
+            found = true
+            break
+        }
+    }
+    if (!found) {
+        taxa_Onagraceae[k] = taxa[i].getSpeciesName()
+        k += 1
+    }
+}
+clade_Onagraceae = clade(taxa=taxa_Onagraceae, age=82)
+
+
+clade_Fuschia = clade("Fuchsia_andrei", "Fuchsia_arborescens", "Fuchsia_boliviana", "Fuchsia_bracelinae",
+   "Fuchsia_brevilobis", "Fuchsia_coccinea", "Fuchsia_colensoi", "Fuchsia_cylindracea", "Fuchsia_cyrtandroides", "Fuchsia_decussata", "Fuchsia_denticulata",
+      "Fuchsia_excorticata", "Fuchsia_fulgens", "Fuchsia_glazioviana", "Fuchsia_hartwegii", "Fuchsia_hatschbachii", "Fuchsia_inflata", "Fuchsia_insignis",
+         "Fuchsia_jimenezii", "Fuchsia_lycioides", "Fuchsia_macrostigma", "Fuchsia_magdalenae", "Fuchsia_magellanica", "Fuchsia_microphylla", "Fuchsia_nigricans",
+            "Fuchsia_pachyrrhiza", "Fuchsia_paniculata", "Fuchsia_pilaloensis", "Fuchsia_procumbens", "Fuchsia_regia", "Fuchsia_splendens", "Fuchsia_thymifolia",
+               "Fuchsia_triphylla", "Fuchsia_vargasiana", "Fuchsia_verrucosa", age=35)
+
+
+# Fuschia section Skinnera 23 Ma lognorm SD 1.0 offset 23 Lee et al, 2013
+# F. cyrtandroides, F. excorticata, and F. colensoi (section Skinnera). 
+# Stem calibration.
+clade_Skinnera = clade("Fuchsia_cyrtandroides", "Fuchsia_excorticata", "Fuchsia_colensoi", "Fuchsia_procumbens", age=25)
+
+
+# Circeae 12 Ma lognorm SD 1.0 Grimsoon et al. 2012. 
+# Stem calibration.
+clade_Circeae = clade("Circaea_alpina","Circaea_canadensis","Circaea_cordata","Circaea_erubescens",
+                        "Circaea_glabrescens","Circaea_lutetiana","Circaea_mollis","Circaea_repens", age=17)
+
+
+# Ludwigia broadly dated to Paleocene normal distribution mean 57.6 with SD 1.5 (Zhi-Chen et al., 2004) 
+# The ageof the Lizigou Formation has been considered as Late Palaeocene (59.2 - 56 Ma) based on palynological correlations (Sung& Tsao, 1976)
+# Song, Z. C., & Tsao, L. (1976). The Paleocene spores and pollen grains from the Fushun Coal Field, Northeast China. Acta Palaeontologica Sinica, 15(2), 147-164.
+# Stem calibration.
+clade_Ludwigia = clade("Ludwigia_adscendens","Ludwigia_alata","Ludwigia_arcuata","Ludwigia_brevipes","Ludwigia_glandulosa",
+                        "Ludwigia_grandiflora","Ludwigia_hyssopifolia","Ludwigia_inclinata","Ludwigia_lanceolata",
+                        "Ludwigia_nervosa","Ludwigia_octovalvis","Ludwigia_ovalis","Ludwigia_palustris",
+                        "Ludwigia_peploides","Ludwigia_peruviana","Ludwigia_polycarpa","Ludwigia_ravenii",
+                        "Ludwigia_repens","Ludwigia_sedoides","Ludwigia_spathulata","Ludwigia_sphaerocarpa",
+                        "Ludwigia_suffruticosa", age=57.6)
+
+
+# Epilobium and Chamerion 12 Ma lognormal SD 2.0 offset 12 Grimsoon et al. 2012 
+# Stem calibration.
+clade_Epilobium = clade("Chamerion_angustifolium","Chamerion_conspersum","Chamerion_dodonaei","Chamerion_latifolium",
+                        "Epilobium_alsinifolium","Epilobium_alsinoides","Epilobium_anagallidifolium","Epilobium_angustum",
+                        "Epilobium_arcticum","Epilobium_billardierianum","Epilobium_brachycarpum","Epilobium_brevipes",
+                        "Epilobium_brunnescens","Epilobium_canum","Epilobium_chionanthum","Epilobium_chlorifolium",
+                        "Epilobium_ciliatum","Epilobium_cleistogamum","Epilobium_coloratum","Epilobium_crassum",
+                        "Epilobium_cylindricum","Epilobium_davuricum","Epilobium_densiflorum","Epilobium_foliosum",
+                        "Epilobium_glabellum","Epilobium_gracilipes","Epilobium_gunnianum","Epilobium_hirsutum",
+                        "Epilobium_hirtigerum","Epilobium_hornemannii","Epilobium_insulare","Epilobium_komarovianum",
+                        "Epilobium_lactiflorum","Epilobium_lanceolatum","Epilobium_leptophyllum","Epilobium_luteum",
+                        "Epilobium_macropus","Epilobium_margaretiae","Epilobium_melanocaulon","Epilobium_microphyllum",
+                        "Epilobium_minutum","Epilobium_montanum","Epilobium_nerteroides","Epilobium_nevadense",
+                        "Epilobium_nummulariifolium","Epilobium_obcordatum","Epilobium_obscurum","Epilobium_pallidiflorum",
+                        "Epilobium_pallidum","Epilobium_palustre","Epilobium_parviflorum","Epilobium_pedunculare",
+                        "Epilobium_pernitens","Epilobium_porphyrium","Epilobium_pubens","Epilobium_pycnostachyum",
+                        "Epilobium_pygmaeum","Epilobium_rigidum","Epilobium_roseum","Epilobium_rostratum","Epilobium_rotundifolium",
+                        "Epilobium_septentrionale","Epilobium_sikkimense","Epilobium_siskiyouense","Epilobium_subdentatum",
+                        "Epilobium_suffruticosum","Epilobium_tasmanicum","Epilobium_tetragonum","Epilobium_torreyi","Epilobium_wilsonii", age=17)
+
+
+# load the constraints into a vector for the BDP model
+#constraints = v(clade_Lythraceae, clade_Onagraceae, clade_Fuschia, clade_Skinnera, clade_Ludwigia, clade_Epilobium, clade_Circeae)
+constraints = v(clade_Lythraceae, clade_Onagraceae, clade_Fuschia, clade_Skinnera, clade_Ludwigia, clade_Epilobium, clade_Circeae)
+
+
+
+
+####### tree model
+
+# set up the parameters for the constant rate birth-death process
+
+# Specify a prior on the diversification and relative extinction rate
+speciation ~ dnUnif(0, 200)
+speciation.setValue(1.0)
+relative_extinction ~ dnUnif(0, 1)
+relative_extinction.setValue(0.5)
+
+# make extinction a deterministic node
+extinction := speciation * relative_extinction
+
+moves[++mi] = mvSlide(speciation, delta=0.1, weight=3)
+moves[++mi] = mvScale(speciation, lambda=0.1, weight=3)
+moves[++mi] = mvSlide(relative_extinction, delta=0.1, weight=3)
+moves[++mi] = mvScale(relative_extinction, lambda=0.1, weight=3)
+
+# the probability of sampling species at the present:
+# the number of species in Onagraceae is ~650 and Lythraceae ~620
+# we have 340 tips in our sample. so rho = 340/1270 ~ 0.27
+
+# the time tree is a stochastic node modeled by the constant rate birth-death process 
+bdp = dnBDP(lambda=speciation, mu=extinction, rho=0.27, rootAge=abs(root_time), taxa=taxa)
+timetree ~ dnConstrainedTopology(treeDistribution=bdp, constraints)
+
+# add moves on the tree node times
+moves[++mi] = mvNodeTimeSlideUniform(timetree, weight=20)
+moves[++mi] = mvNodeTimeScale(timetree, lambda=0.1, weight=20)
+moves[++mi] = mvSubtreeScale(timetree, weight=20)
+
+# and moves for the tree topology
+moves[++mi] = mvNNI(timetree, weight=40)
+moves[++mi] = mvNarrow(timetree, weight=40)
+moves[++mi] = mvFNPR(timetree, weight=40)
+moves[++mi] = mvGPR(timetree, weight=40)
+
+
+
+
+##### set up the internal node calibrations on the timetree:
+
+# create a deterministic node for the stem age of the MRCA of all Fuschia section Skinnera
+tmrca_Skinnera := tmrca(timetree, clade_Skinnera, stemAge=TRUE)
+# create an additional deterministic node that is negative, representing time in the past
+negative_tmrca_Skinnera := -(tmrca_Skinnera)
+# the age of the fossil is a stochastic node that has a lognormal waiting time that is a function of the age of the calibration node
+# we will model this waiting time so that the fossil is mean 10 My younger than its ancestor, but could be ~ 0-30 My
+mean_ln_skin = 10
+sdv = 2.0
+mu = ln(mean_ln_skin) - ((sdv * sdv) * 0.5)
+# using these parameters we create a stochastic node for the fossil
+stem_Skinnera_fossil ~ dnLnorm(mu, sdv, offset=negative_tmrca_Skinnera)
+# then we clamp this node with the observed fossil specimen, treating the fossil like data
+fuschia_fossil_age = -23
+stem_Skinnera_fossil.clamp(fuschia_fossil_age)
+
+
+
+# Lythrum/Peplis 81.5 Ma (Graham 2013) oldest known fossils for Lythraceae
+# crown calibration given a mean of 20 Ma, sdv = 2.0
+tmrca_Lythraceae := tmrca(timetree, clade_Lythraceae)
+negative_tmrca_Lythraceae := -(tmrca_Lythraceae)
+
+mean_ln_lyth = 20
+mu_lyth = ln(mean_ln_lyth) - ((2.0 * 2.0) * 0.5)
+lythraceae_fossil ~ dnLnorm(mu_lyth, 2.0, offset=negative_tmrca_Lythraceae)
+
+lythraceae_fossil_age = -81.5
+lythraceae_fossil.clamp(lythraceae_fossil_age)
+
+
+
+# Ludwigia broadly dated to Paleocene normal distribution mean 57.6 with SD 1.5 (Zhi-Chen et al., 2004) STEM
+# The ageof the Lizigou Formation has been considered as Late Palaeocene (59.2 - 56 Ma) based on palynological correlations (Sung& Tsao, 1976)
+#Song, Z. C., & Tsao, L. (1976). The Paleocene spores and pollen grains from the Fushun Coal Field, Northeast China. Acta Palaeontologica Sinica, 15(2), 147-164.
+tmrca_Ludwigia := tmrca(timetree, clade_Ludwigia, stemAge=TRUE)
+negative_tmrca_Ludwigia := -(tmrca_Ludwigia)
+
+# mean 10 sdv = 2.0
+mu_lud = ln(10) - ((2.0 * 2.0) * 0.5)
+stem_ludwigia_fossil ~ dnLnorm(mu_lud, 2.0, offset=negative_tmrca_Ludwigia)
+stem_ludwigia_fossil.clamp(-57.6)
+
+
+
+# Epilobium and Chamerion 12 Ma lognormal SD 2.0 offset 12 Grimsoon et al. 2012 STEM
+tmrca_Epilobium := tmrca(timetree, clade_Epilobium, stemAge=TRUE)
+negative_tmrca_Epilobium := -(tmrca_Epilobium)
+
+# mean 10 sdv = 2.0
+mu_epil = ln(10) - ((2.0 * 2.0) * 0.5)
+stem_epilobium_fossil ~ dnLnorm(mu_epil, 2.0, offset=negative_tmrca_Epilobium)
+stem_epilobium_fossil.clamp(-12.0)
+
+
+
+# Circeae 12 Ma lognorm SD 1.0 Grimsoon et al. 2012 STEM
+tmrca_Circeae := tmrca(timetree, clade_Circeae, stemAge=TRUE)
+negative_tmrca_Circeae := -(tmrca_Circeae)
+
+# mean 10 sdv = 2.0
+mu_cir = ln(10) - ((2.0 * 2.0) * 0.5)
+stem_Circeae_fossil ~ dnLnorm(mu_cir, 2.0, offset=negative_tmrca_Circeae)
+stem_Circeae_fossil.clamp(-12.0)
+
+
+####### UCLN model on branch rates
+
+ucln_log_mean <- 0.0
+ucln_sigma <- 0.25
+
+# pull rates for each branch from lognormal
+for (j in 1:n_branches) {
+
+    branch_rates[j] ~ dnLnorm(ucln_log_mean, ucln_sigma)
+    moves[++mi] = mvSlide(branch_rates[j], delta=0.1, weight=60/n_branches)
+
+}
+
+mean_rt := mean(branch_rates)
+
+up_down_scale_tree = mvUpDownScale(lambda=0.1, weight=100)
+up_down_scale_tree.addVariable( timetree, TRUE )
+up_down_scale_tree.addVariable( root_time, TRUE )
+
+# base rates for each partition
+for (i in 1:n_partitions) {
+
+    base_rate[i] ~ dnExponential(10.0)
+    base_rate[i].setValue(1.0)
+    moves[++mi] = mvSlide(base_rate[i], delta=0.1, weight=20)
+    up_down_scale_tree.addVariable( base_rate[i], FALSE )
+
+    # the branch-rates used in the phylogenetic CTMC are a function of the UCLN branch rates and the base rate for this partition
+    branch_subrates[i] := branch_rates * base_rate[i]
+    
+
+    ### the full phylogenetic CTMC
+    seq[i] ~ dnPhyloCTMC(tree=timetree, Q=Q[i], branchRates=branch_subrates[i], nSites=n_sites[i], siteRates=gamma_rates[i], type="DNA")
+
+    ### attach the observed sequence data
+    seq[i].clamp(data[i])
+
+}
+moves[++mi] = up_down_scale_tree
+
+ac[1].setValue(0.244134)
+ac[2].setValue(0.703938)
+ac[3].setValue(0.821876)
+ac[4].setValue(0.369411)
+ac[5].setValue(0.411477)
+ac[6].setValue(0.675309)
+ac[7].setValue(0.891047)
+ac[8].setValue(0.924697)
+ag[1].setValue(0.403409)
+ag[2].setValue(0.575511)
+ag[3].setValue(0.640374)
+ag[4].setValue(0.858862)
+ag[5].setValue(0.464994)
+ag[6].setValue(0.425724)
+ag[7].setValue(0.595219)
+ag[8].setValue(0.709343)
+alpha[1].setValue(0.565768)
+alpha[2].setValue(0.73242)
+alpha[3].setValue(0.66527)
+alpha[4].setValue(1.43861)
+alpha[5].setValue(0.222991)
+alpha[6].setValue(0.469106)
+alpha[7].setValue(0.653944)
+alpha[8].setValue(0.699036)
+at[1].setValue(0.321308)
+at[2].setValue(0.0677024)
+at[3].setValue(0.0820306)
+at[4].setValue(0.310264)
+at[5].setValue(0.164725)
+at[6].setValue(0.248401)
+at[7].setValue(0.119123)
+at[8].setValue(0.175602)
+base_rate[1].setValue(0.00179377)
+base_rate[2].setValue(0.000547396)
+base_rate[3].setValue(0.000605648)
+base_rate[4].setValue(0.0028301)
+base_rate[5].setValue(0.000374597)
+base_rate[6].setValue(0.000683752)
+base_rate[7].setValue(0.000639105)
+base_rate[8].setValue(0.00067796)
+branch_rates[1].setValue(1.25122)
+branch_rates[2].setValue(0.767566)
+branch_rates[3].setValue(0.783857)
+branch_rates[4].setValue(0.841493)
+branch_rates[5].setValue(1.0222)
+branch_rates[6].setValue(0.758991)
+branch_rates[7].setValue(1.18836)
+branch_rates[8].setValue(0.750071)
+branch_rates[9].setValue(1.08292)
+branch_rates[10].setValue(1.16118)
+branch_rates[11].setValue(0.959911)
+branch_rates[12].setValue(0.941664)
+branch_rates[13].setValue(0.959911)
+branch_rates[14].setValue(0.86119)
+branch_rates[15].setValue(0.654522)
+branch_rates[16].setValue(1.00314)
+branch_rates[17].setValue(1.72034)
+branch_rates[18].setValue(0.978278)
+branch_rates[19].setValue(1.21811)
+branch_rates[20].setValue(1.1442)
+branch_rates[21].setValue(1.18836)
+branch_rates[22].setValue(1.57299)
+branch_rates[23].setValue(1.36806)
+branch_rates[24].setValue(0.775843)
+branch_rates[25].setValue(0.684871)
+branch_rates[26].setValue(1.21811)
+branch_rates[27].setValue(1.904)
+branch_rates[28].setValue(1.72034)
+branch_rates[29].setValue(0.966015)
+branch_rates[30].setValue(0.886538)
+branch_rates[31].setValue(1.23974)
+branch_rates[32].setValue(0.94774)
+branch_rates[33].setValue(1.46013)
+branch_rates[34].setValue(1.36806)
+branch_rates[35].setValue(0.892757)
+branch_rates[36].setValue(0.841493)
+branch_rates[37].setValue(0.929514)
+branch_rates[38].setValue(1.09011)
+branch_rates[39].setValue(1.13601)
+branch_rates[40].setValue(1.06884)
+branch_rates[41].setValue(0.978278)
+branch_rates[42].setValue(0.917336)
+branch_rates[43].setValue(0.670623)
+branch_rates[44].setValue(0.783857)
+branch_rates[45].setValue(0.929514)
+branch_rates[46].setValue(0.799221)
+branch_rates[47].setValue(1.06195)
+branch_rates[48].setValue(1.27574)
+branch_rates[49].setValue(0.87397)
+branch_rates[50].setValue(1.12013)
+branch_rates[51].setValue(1.904)
+branch_rates[52].setValue(1.00945)
+branch_rates[53].setValue(0.827908)
+branch_rates[54].setValue(1.0222)
+branch_rates[55].setValue(1.17)
+branch_rates[56].setValue(1.00945)
+branch_rates[57].setValue(0.730964)
+branch_rates[58].setValue(0.905096)
+branch_rates[59].setValue(0.820946)
+branch_rates[60].setValue(0.58128)
+branch_rates[61].setValue(0.799221)
+branch_rates[62].setValue(0.58128)
+branch_rates[63].setValue(0.720619)
+branch_rates[64].setValue(0.978278)
+branch_rates[65].setValue(1.16118)
+branch_rates[66].setValue(1.34998)
+branch_rates[67].setValue(1.18836)
+branch_rates[68].setValue(0.972136)
+branch_rates[69].setValue(0.58128)
+branch_rates[70].setValue(0.966015)
+branch_rates[71].setValue(1.72034)
+branch_rates[72].setValue(1.72034)
+branch_rates[73].setValue(0.52521)
+branch_rates[74].setValue(0.813855)
+branch_rates[75].setValue(0.791641)
+branch_rates[76].setValue(0.92343)
+branch_rates[77].setValue(0.86119)
+branch_rates[78].setValue(1.0158)
+branch_rates[79].setValue(0.996872)
+branch_rates[80].setValue(1.16118)
+branch_rates[81].setValue(0.905096)
+branch_rates[82].setValue(0.898942)
+branch_rates[83].setValue(0.93559)
+branch_rates[84].setValue(1.46013)
+branch_rates[85].setValue(0.996872)
+branch_rates[86].setValue(1.6323)
+branch_rates[87].setValue(1.22872)
+branch_rates[88].setValue(0.911226)
+branch_rates[89].setValue(0.854703)
+branch_rates[90].setValue(0.791641)
+branch_rates[91].setValue(1.2632)
+branch_rates[92].setValue(1.27574)
+branch_rates[93].setValue(1.17)
+branch_rates[94].setValue(0.834753)
+branch_rates[95].setValue(0.697758)
+branch_rates[96].setValue(1.40924)
+branch_rates[97].setValue(0.834753)
+branch_rates[98].setValue(0.783857)
+branch_rates[99].setValue(0.750071)
+branch_rates[100].setValue(1.10485)
+branch_rates[101].setValue(0.941664)
+branch_rates[102].setValue(1.11242)
+branch_rates[103].setValue(1.17)
+branch_rates[104].setValue(0.813855)
+branch_rates[105].setValue(0.767566)
+branch_rates[106].setValue(1.10485)
+branch_rates[107].setValue(0.917336)
+branch_rates[108].setValue(0.783857)
+branch_rates[109].setValue(0.996872)
+branch_rates[110].setValue(1.22872)
+branch_rates[111].setValue(1.40924)
+branch_rates[112].setValue(1.25122)
+branch_rates[113].setValue(1.34998)
+branch_rates[114].setValue(0.94774)
+branch_rates[115].setValue(1.05514)
+branch_rates[116].setValue(1.36806)
+branch_rates[117].setValue(1.46013)
+branch_rates[118].setValue(1.07583)
+branch_rates[119].setValue(0.854703)
+branch_rates[120].setValue(0.799221)
+branch_rates[121].setValue(1.0222)
+branch_rates[122].setValue(1.6323)
+branch_rates[123].setValue(1.36806)
+branch_rates[124].setValue(0.86761)
+branch_rates[125].setValue(1.2632)
+branch_rates[126].setValue(1.31754)
+branch_rates[127].setValue(0.783857)
+branch_rates[128].setValue(1.04176)
+branch_rates[129].setValue(1.17905)
+branch_rates[130].setValue(1.18836)
+branch_rates[131].setValue(1.18836)
+branch_rates[132].setValue(1.27574)
+branch_rates[133].setValue(1.19796)
+branch_rates[134].setValue(1.11242)
+branch_rates[135].setValue(0.86119)
+branch_rates[136].setValue(1.03518)
+branch_rates[137].setValue(0.612632)
+branch_rates[138].setValue(0.854703)
+branch_rates[139].setValue(1.21811)
+branch_rates[140].setValue(1.00314)
+branch_rates[141].setValue(1.0222)
+branch_rates[142].setValue(1.3877)
+branch_rates[143].setValue(0.984446)
+branch_rates[144].setValue(1.12798)
+branch_rates[145].setValue(1.72034)
+branch_rates[146].setValue(1.3877)
+branch_rates[147].setValue(1.27574)
+branch_rates[148].setValue(0.827908)
+branch_rates[149].setValue(1.17)
+branch_rates[150].setValue(1.00945)
+branch_rates[151].setValue(1.15259)
+branch_rates[152].setValue(1.22872)
+branch_rates[153].setValue(0.820946)
+branch_rates[154].setValue(1.36806)
+branch_rates[155].setValue(1.00945)
+branch_rates[156].setValue(1.00945)
+branch_rates[157].setValue(0.92343)
+branch_rates[158].setValue(1.06884)
+branch_rates[159].setValue(1.17905)
+branch_rates[160].setValue(1.17905)
+branch_rates[161].setValue(1.09742)
+branch_rates[162].setValue(1.11242)
+branch_rates[163].setValue(1.52783)
+branch_rates[164].setValue(1.21811)
+branch_rates[165].setValue(0.94774)
+branch_rates[166].setValue(0.996872)
+branch_rates[167].setValue(0.720619)
+branch_rates[168].setValue(0.684871)
+branch_rates[169].setValue(1.20786)
+branch_rates[170].setValue(0.886538)
+branch_rates[171].setValue(1.3877)
+branch_rates[172].setValue(0.775843)
+branch_rates[173].setValue(1.72034)
+branch_rates[174].setValue(0.740752)
+branch_rates[175].setValue(0.978278)
+branch_rates[176].setValue(1.72034)
+branch_rates[177].setValue(1.21811)
+branch_rates[178].setValue(0.93559)
+branch_rates[179].setValue(1.33321)
+branch_rates[180].setValue(1.05514)
+branch_rates[181].setValue(1.72034)
+branch_rates[182].setValue(1.49115)
+branch_rates[183].setValue(0.58128)
+branch_rates[184].setValue(1.6323)
+branch_rates[185].setValue(0.783857)
+branch_rates[186].setValue(1.17905)
+branch_rates[187].setValue(0.905096)
+branch_rates[188].setValue(1.16118)
+branch_rates[189].setValue(1.31754)
+branch_rates[190].setValue(1.09742)
+branch_rates[191].setValue(0.750071)
+branch_rates[192].setValue(1.30282)
+branch_rates[193].setValue(0.775843)
+branch_rates[194].setValue(0.670623)
+branch_rates[195].setValue(0.820946)
+branch_rates[196].setValue(0.783857)
+branch_rates[197].setValue(1.72034)
+branch_rates[198].setValue(1.27574)
+branch_rates[199].setValue(1.40924)
+branch_rates[200].setValue(1.10485)
+branch_rates[201].setValue(1.03518)
+branch_rates[202].setValue(0.84814)
+branch_rates[203].setValue(1.00314)
+branch_rates[204].setValue(0.94774)
+branch_rates[205].setValue(0.767566)
+branch_rates[206].setValue(1.17905)
+branch_rates[207].setValue(1.33321)
+branch_rates[208].setValue(1.00945)
+branch_rates[209].setValue(0.84814)
+branch_rates[210].setValue(1.0222)
+branch_rates[211].setValue(1.06195)
+branch_rates[212].setValue(1.16118)
+branch_rates[213].setValue(1.07583)
+branch_rates[214].setValue(0.929514)
+branch_rates[215].setValue(1.05514)
+branch_rates[216].setValue(0.758991)
+branch_rates[217].setValue(1.06195)
+branch_rates[218].setValue(1.07583)
+branch_rates[219].setValue(1.06195)
+branch_rates[220].setValue(1.04842)
+branch_rates[221].setValue(0.990642)
+branch_rates[222].setValue(0.709602)
+branch_rates[223].setValue(0.996872)
+branch_rates[224].setValue(0.827908)
+branch_rates[225].setValue(0.58128)
+branch_rates[226].setValue(1.08292)
+branch_rates[227].setValue(1.13601)
+branch_rates[228].setValue(0.93559)
+branch_rates[229].setValue(0.720619)
+branch_rates[230].setValue(1.25122)
+branch_rates[231].setValue(0.750071)
+branch_rates[232].setValue(1.18836)
+branch_rates[233].setValue(0.941664)
+branch_rates[234].setValue(0.799221)
+branch_rates[235].setValue(0.941664)
+branch_rates[236].setValue(1.43316)
+branch_rates[237].setValue(0.820946)
+branch_rates[238].setValue(0.941664)
+branch_rates[239].setValue(0.93559)
+branch_rates[240].setValue(1.3877)
+branch_rates[241].setValue(1.49115)
+branch_rates[242].setValue(0.966015)
+branch_rates[243].setValue(0.813855)
+branch_rates[244].setValue(0.917336)
+branch_rates[245].setValue(1.23974)
+branch_rates[246].setValue(0.978278)
+branch_rates[247].setValue(1.0222)
+branch_rates[248].setValue(0.635732)
+branch_rates[249].setValue(0.799221)
+branch_rates[250].setValue(0.612632)
+branch_rates[251].setValue(1.28892)
+branch_rates[252].setValue(1.36806)
+branch_rates[253].setValue(1.1442)
+branch_rates[254].setValue(1.27574)
+branch_rates[255].setValue(0.966015)
+branch_rates[256].setValue(0.990642)
+branch_rates[257].setValue(1.17)
+branch_rates[258].setValue(0.911226)
+branch_rates[259].setValue(1.09011)
+branch_rates[260].setValue(1.19796)
+branch_rates[261].setValue(0.813855)
+branch_rates[262].setValue(0.898942)
+branch_rates[263].setValue(0.959911)
+branch_rates[264].setValue(1.19796)
+branch_rates[265].setValue(1.49115)
+branch_rates[266].setValue(0.783857)
+branch_rates[267].setValue(1.13601)
+branch_rates[268].setValue(0.670623)
+branch_rates[269].setValue(1.16118)
+branch_rates[270].setValue(0.966015)
+branch_rates[271].setValue(1.04842)
+branch_rates[272].setValue(1.1442)
+branch_rates[273].setValue(0.730964)
+branch_rates[274].setValue(0.892757)
+branch_rates[275].setValue(1.46013)
+branch_rates[276].setValue(0.86119)
+branch_rates[277].setValue(0.750071)
+branch_rates[278].setValue(1.08292)
+branch_rates[279].setValue(0.990642)
+branch_rates[280].setValue(0.841493)
+branch_rates[281].setValue(1.12798)
+branch_rates[282].setValue(1.03518)
+branch_rates[283].setValue(0.697758)
+branch_rates[284].setValue(0.783857)
+branch_rates[285].setValue(0.612632)
+branch_rates[286].setValue(1.12013)
+branch_rates[287].setValue(1.10485)
+branch_rates[288].setValue(0.783857)
+branch_rates[289].setValue(0.750071)
+branch_rates[290].setValue(0.911226)
+branch_rates[291].setValue(1.28892)
+branch_rates[292].setValue(1.6323)
+branch_rates[293].setValue(1.28892)
+branch_rates[294].setValue(1.06884)
+branch_rates[295].setValue(1.20786)
+branch_rates[296].setValue(0.654522)
+branch_rates[297].setValue(0.820946)
+branch_rates[298].setValue(0.87397)
+branch_rates[299].setValue(1.2632)
+branch_rates[300].setValue(1.16118)
+branch_rates[301].setValue(0.917336)
+branch_rates[302].setValue(1.2632)
+branch_rates[303].setValue(1.20786)
+branch_rates[304].setValue(0.684871)
+branch_rates[305].setValue(1.13601)
+branch_rates[306].setValue(0.941664)
+branch_rates[307].setValue(0.730964)
+branch_rates[308].setValue(0.886538)
+branch_rates[309].setValue(1.34998)
+branch_rates[310].setValue(0.775843)
+branch_rates[311].setValue(0.93559)
+branch_rates[312].setValue(0.984446)
+branch_rates[313].setValue(1.07583)
+branch_rates[314].setValue(0.990642)
+branch_rates[315].setValue(0.820946)
+branch_rates[316].setValue(0.52521)
+branch_rates[317].setValue(0.941664)
+branch_rates[318].setValue(0.959911)
+branch_rates[319].setValue(0.775843)
+branch_rates[320].setValue(0.87397)
+branch_rates[321].setValue(1.21811)
+branch_rates[322].setValue(1.57299)
+branch_rates[323].setValue(0.750071)
+branch_rates[324].setValue(0.767566)
+branch_rates[325].setValue(1.12798)
+branch_rates[326].setValue(1.03518)
+branch_rates[327].setValue(1.46013)
+branch_rates[328].setValue(1.11242)
+branch_rates[329].setValue(1.57299)
+branch_rates[330].setValue(0.730964)
+branch_rates[331].setValue(1.34998)
+branch_rates[332].setValue(1.04176)
+branch_rates[333].setValue(1.00945)
+branch_rates[334].setValue(0.827908)
+branch_rates[335].setValue(1.20786)
+branch_rates[336].setValue(1.15259)
+branch_rates[337].setValue(0.966015)
+branch_rates[338].setValue(1.16118)
+branch_rates[339].setValue(1.904)
+branch_rates[340].setValue(0.670623)
+branch_rates[341].setValue(1.11242)
+branch_rates[342].setValue(0.905096)
+branch_rates[343].setValue(0.612632)
+branch_rates[344].setValue(1.00314)
+branch_rates[345].setValue(0.84814)
+branch_rates[346].setValue(0.670623)
+branch_rates[347].setValue(0.841493)
+branch_rates[348].setValue(1.30282)
+branch_rates[349].setValue(1.04176)
+branch_rates[350].setValue(0.820946)
+branch_rates[351].setValue(1.11242)
+branch_rates[352].setValue(0.911226)
+branch_rates[353].setValue(1.43316)
+branch_rates[354].setValue(0.966015)
+branch_rates[355].setValue(1.34998)
+branch_rates[356].setValue(0.929514)
+branch_rates[357].setValue(0.775843)
+branch_rates[358].setValue(1.21811)
+branch_rates[359].setValue(0.52521)
+branch_rates[360].setValue(0.709602)
+branch_rates[361].setValue(1.12798)
+branch_rates[362].setValue(1.06195)
+branch_rates[363].setValue(1.904)
+branch_rates[364].setValue(0.775843)
+branch_rates[365].setValue(0.996872)
+branch_rates[366].setValue(1.03518)
+branch_rates[367].setValue(0.612632)
+branch_rates[368].setValue(1.6323)
+branch_rates[369].setValue(1.49115)
+branch_rates[370].setValue(1.06195)
+branch_rates[371].setValue(0.941664)
+branch_rates[372].setValue(0.93559)
+branch_rates[373].setValue(1.12798)
+branch_rates[374].setValue(0.799221)
+branch_rates[375].setValue(1.57299)
+branch_rates[376].setValue(1.72034)
+branch_rates[377].setValue(1.00314)
+branch_rates[378].setValue(0.990642)
+branch_rates[379].setValue(1.13601)
+branch_rates[380].setValue(1.0158)
+branch_rates[381].setValue(0.966015)
+branch_rates[382].setValue(1.19796)
+branch_rates[383].setValue(1.04842)
+branch_rates[384].setValue(0.791641)
+branch_rates[385].setValue(1.06884)
+branch_rates[386].setValue(1.11242)
+branch_rates[387].setValue(0.978278)
+branch_rates[388].setValue(1.15259)
+branch_rates[389].setValue(0.94774)
+branch_rates[390].setValue(0.767566)
+branch_rates[391].setValue(1.00945)
+branch_rates[392].setValue(0.84814)
+branch_rates[393].setValue(0.750071)
+branch_rates[394].setValue(0.86761)
+branch_rates[395].setValue(0.93559)
+branch_rates[396].setValue(1.0222)
+branch_rates[397].setValue(0.990642)
+branch_rates[398].setValue(0.84814)
+branch_rates[399].setValue(1.3877)
+branch_rates[400].setValue(1.21811)
+branch_rates[401].setValue(1.36806)
+branch_rates[402].setValue(0.911226)
+branch_rates[403].setValue(1.13601)
+branch_rates[404].setValue(1.16118)
+branch_rates[405].setValue(1.904)
+branch_rates[406].setValue(0.92343)
+branch_rates[407].setValue(0.86761)
+branch_rates[408].setValue(1.1442)
+branch_rates[409].setValue(0.52521)
+branch_rates[410].setValue(0.911226)
+branch_rates[411].setValue(0.880277)
+branch_rates[412].setValue(0.52521)
+branch_rates[413].setValue(1.17)
+branch_rates[414].setValue(1.15259)
+branch_rates[415].setValue(1.0158)
+branch_rates[416].setValue(0.905096)
+branch_rates[417].setValue(0.750071)
+branch_rates[418].setValue(1.34998)
+branch_rates[419].setValue(0.799221)
+branch_rates[420].setValue(0.750071)
+branch_rates[421].setValue(0.93559)
+branch_rates[422].setValue(0.84814)
+branch_rates[423].setValue(1.17)
+branch_rates[424].setValue(1.10485)
+branch_rates[425].setValue(0.966015)
+branch_rates[426].setValue(0.775843)
+branch_rates[427].setValue(0.966015)
+branch_rates[428].setValue(0.709602)
+branch_rates[429].setValue(0.93559)
+branch_rates[430].setValue(1.6323)
+branch_rates[431].setValue(1.09742)
+branch_rates[432].setValue(0.635732)
+branch_rates[433].setValue(0.966015)
+branch_rates[434].setValue(0.892757)
+branch_rates[435].setValue(0.854703)
+branch_rates[436].setValue(1.22872)
+branch_rates[437].setValue(0.854703)
+branch_rates[438].setValue(1.05514)
+branch_rates[439].setValue(1.31754)
+branch_rates[440].setValue(0.966015)
+branch_rates[441].setValue(0.898942)
+branch_rates[442].setValue(0.92343)
+branch_rates[443].setValue(0.827908)
+branch_rates[444].setValue(1.3877)
+branch_rates[445].setValue(1.00314)
+branch_rates[446].setValue(0.892757)
+branch_rates[447].setValue(1.43316)
+branch_rates[448].setValue(0.791641)
+branch_rates[449].setValue(0.799221)
+branch_rates[450].setValue(0.87397)
+branch_rates[451].setValue(1.57299)
+branch_rates[452].setValue(0.86761)
+branch_rates[453].setValue(1.23974)
+branch_rates[454].setValue(0.767566)
+branch_rates[455].setValue(1.04176)
+branch_rates[456].setValue(0.959911)
+branch_rates[457].setValue(1.57299)
+branch_rates[458].setValue(1.31754)
+branch_rates[459].setValue(0.834753)
+branch_rates[460].setValue(0.929514)
+branch_rates[461].setValue(0.834753)
+branch_rates[462].setValue(0.972136)
+branch_rates[463].setValue(1.27574)
+branch_rates[464].setValue(0.635732)
+branch_rates[465].setValue(0.911226)
+branch_rates[466].setValue(0.841493)
+branch_rates[467].setValue(0.783857)
+branch_rates[468].setValue(0.58128)
+branch_rates[469].setValue(0.750071)
+branch_rates[470].setValue(1.07583)
+branch_rates[471].setValue(1.17)
+branch_rates[472].setValue(0.767566)
+branch_rates[473].setValue(1.12798)
+branch_rates[474].setValue(1.04842)
+branch_rates[475].setValue(1.27574)
+branch_rates[476].setValue(1.31754)
+branch_rates[477].setValue(1.30282)
+branch_rates[478].setValue(1.27574)
+branch_rates[479].setValue(1.11242)
+branch_rates[480].setValue(1.25122)
+branch_rates[481].setValue(0.750071)
+branch_rates[482].setValue(0.841493)
+branch_rates[483].setValue(1.04842)
+branch_rates[484].setValue(1.40924)
+branch_rates[485].setValue(0.87397)
+branch_rates[486].setValue(0.58128)
+branch_rates[487].setValue(0.827908)
+branch_rates[488].setValue(0.720619)
+branch_rates[489].setValue(1.25122)
+branch_rates[490].setValue(1.16118)
+branch_rates[491].setValue(1.46013)
+branch_rates[492].setValue(0.94774)
+branch_rates[493].setValue(1.0158)
+branch_rates[494].setValue(0.775843)
+branch_rates[495].setValue(1.0158)
+branch_rates[496].setValue(0.898942)
+branch_rates[497].setValue(1.07583)
+branch_rates[498].setValue(0.854703)
+branch_rates[499].setValue(1.22872)
+branch_rates[500].setValue(0.52521)
+branch_rates[501].setValue(0.775843)
+branch_rates[502].setValue(1.06884)
+branch_rates[503].setValue(1.00314)
+branch_rates[504].setValue(1.04842)
+branch_rates[505].setValue(0.750071)
+branch_rates[506].setValue(0.886538)
+branch_rates[507].setValue(1.08292)
+branch_rates[508].setValue(1.72034)
+branch_rates[509].setValue(0.87397)
+branch_rates[510].setValue(0.799221)
+branch_rates[511].setValue(0.750071)
+branch_rates[512].setValue(1.0158)
+branch_rates[513].setValue(1.23974)
+branch_rates[514].setValue(1.10485)
+branch_rates[515].setValue(1.00945)
+branch_rates[516].setValue(0.959911)
+branch_rates[517].setValue(1.12798)
+branch_rates[518].setValue(1.06884)
+branch_rates[519].setValue(0.959911)
+branch_rates[520].setValue(0.978278)
+branch_rates[521].setValue(1.904)
+branch_rates[522].setValue(1.6323)
+branch_rates[523].setValue(1.31754)
+branch_rates[524].setValue(0.990642)
+branch_rates[525].setValue(1.27574)
+branch_rates[526].setValue(0.996872)
+branch_rates[527].setValue(0.911226)
+branch_rates[528].setValue(0.966015)
+branch_rates[529].setValue(1.07583)
+branch_rates[530].setValue(0.87397)
+branch_rates[531].setValue(1.03518)
+branch_rates[532].setValue(0.978278)
+branch_rates[533].setValue(0.87397)
+branch_rates[534].setValue(0.654522)
+branch_rates[535].setValue(1.06195)
+branch_rates[536].setValue(1.12013)
+branch_rates[537].setValue(0.911226)
+branch_rates[538].setValue(1.09011)
+branch_rates[539].setValue(1.09011)
+branch_rates[540].setValue(0.953821)
+branch_rates[541].setValue(1.02866)
+branch_rates[542].setValue(0.670623)
+branch_rates[543].setValue(0.783857)
+branch_rates[544].setValue(0.905096)
+branch_rates[545].setValue(1.05514)
+branch_rates[546].setValue(0.86119)
+branch_rates[547].setValue(1.3877)
+branch_rates[548].setValue(0.880277)
+branch_rates[549].setValue(1.49115)
+branch_rates[550].setValue(0.880277)
+branch_rates[551].setValue(0.978278)
+branch_rates[552].setValue(1.23974)
+branch_rates[553].setValue(1.12798)
+branch_rates[554].setValue(1.43316)
+branch_rates[555].setValue(1.1442)
+branch_rates[556].setValue(0.941664)
+branch_rates[557].setValue(1.0222)
+branch_rates[558].setValue(1.72034)
+branch_rates[559].setValue(1.30282)
+branch_rates[560].setValue(0.767566)
+branch_rates[561].setValue(1.2632)
+branch_rates[562].setValue(0.58128)
+branch_rates[563].setValue(0.978278)
+branch_rates[564].setValue(0.972136)
+branch_rates[565].setValue(0.813855)
+branch_rates[566].setValue(0.87397)
+branch_rates[567].setValue(1.1442)
+branch_rates[568].setValue(1.20786)
+branch_rates[569].setValue(1.33321)
+branch_rates[570].setValue(0.87397)
+branch_rates[571].setValue(1.6323)
+branch_rates[572].setValue(0.767566)
+branch_rates[573].setValue(1.904)
+branch_rates[574].setValue(1.33321)
+branch_rates[575].setValue(0.86119)
+branch_rates[576].setValue(1.40924)
+branch_rates[577].setValue(1.6323)
+branch_rates[578].setValue(1.33321)
+branch_rates[579].setValue(1.6323)
+branch_rates[580].setValue(0.892757)
+branch_rates[581].setValue(0.670623)
+branch_rates[582].setValue(1.07583)
+branch_rates[583].setValue(1.2632)
+branch_rates[584].setValue(1.04176)
+branch_rates[585].setValue(0.886538)
+branch_rates[586].setValue(1.15259)
+branch_rates[587].setValue(0.86761)
+branch_rates[588].setValue(1.34998)
+branch_rates[589].setValue(1.00945)
+branch_rates[590].setValue(0.799221)
+branch_rates[591].setValue(0.827908)
+branch_rates[592].setValue(0.841493)
+branch_rates[593].setValue(0.730964)
+branch_rates[594].setValue(1.34998)
+branch_rates[595].setValue(1.904)
+branch_rates[596].setValue(1.25122)
+branch_rates[597].setValue(1.30282)
+branch_rates[598].setValue(1.21811)
+branch_rates[599].setValue(1.12798)
+branch_rates[600].setValue(1.40924)
+branch_rates[601].setValue(1.00945)
+branch_rates[602].setValue(1.3877)
+branch_rates[603].setValue(1.12798)
+branch_rates[604].setValue(0.87397)
+branch_rates[605].setValue(1.36806)
+branch_rates[606].setValue(1.03518)
+branch_rates[607].setValue(1.16118)
+branch_rates[608].setValue(1.27574)
+branch_rates[609].setValue(1.46013)
+branch_rates[610].setValue(0.612632)
+branch_rates[611].setValue(1.43316)
+branch_rates[612].setValue(1.10485)
+branch_rates[613].setValue(0.58128)
+branch_rates[614].setValue(1.3877)
+branch_rates[615].setValue(0.52521)
+branch_rates[616].setValue(0.58128)
+branch_rates[617].setValue(1.36806)
+branch_rates[618].setValue(0.654522)
+branch_rates[619].setValue(1.6323)
+branch_rates[620].setValue(0.905096)
+branch_rates[621].setValue(1.52783)
+branch_rates[622].setValue(1.72034)
+branch_rates[623].setValue(1.06195)
+branch_rates[624].setValue(0.92343)
+branch_rates[625].setValue(1.904)
+branch_rates[626].setValue(0.880277)
+branch_rates[627].setValue(0.898942)
+branch_rates[628].setValue(0.820946)
+branch_rates[629].setValue(0.827908)
+branch_rates[630].setValue(1.33321)
+branch_rates[631].setValue(0.966015)
+branch_rates[632].setValue(1.18836)
+branch_rates[633].setValue(0.917336)
+branch_rates[634].setValue(0.941664)
+branch_rates[635].setValue(1.31754)
+branch_rates[636].setValue(0.58128)
+branch_rates[637].setValue(1.2632)
+branch_rates[638].setValue(1.6323)
+branch_rates[639].setValue(0.750071)
+branch_rates[640].setValue(0.94774)
+branch_rates[641].setValue(0.697758)
+branch_rates[642].setValue(1.52783)
+branch_rates[643].setValue(1.08292)
+branch_rates[644].setValue(0.635732)
+branch_rates[645].setValue(0.929514)
+branch_rates[646].setValue(0.959911)
+branch_rates[647].setValue(0.697758)
+branch_rates[648].setValue(1.18836)
+branch_rates[649].setValue(1.17905)
+branch_rates[650].setValue(1.36806)
+branch_rates[651].setValue(0.953821)
+branch_rates[652].setValue(0.929514)
+branch_rates[653].setValue(1.72034)
+branch_rates[654].setValue(1.33321)
+branch_rates[655].setValue(0.978278)
+branch_rates[656].setValue(1.40924)
+branch_rates[657].setValue(1.72034)
+branch_rates[658].setValue(0.86761)
+branch_rates[659].setValue(0.941664)
+branch_rates[660].setValue(1.18836)
+branch_rates[661].setValue(0.52521)
+branch_rates[662].setValue(0.996872)
+branch_rates[663].setValue(0.654522)
+branch_rates[664].setValue(0.58128)
+branch_rates[665].setValue(1.13601)
+branch_rates[666].setValue(0.767566)
+branch_rates[667].setValue(0.806619)
+branch_rates[668].setValue(1.03518)
+branch_rates[669].setValue(1.40924)
+branch_rates[670].setValue(0.612632)
+branch_rates[671].setValue(1.07583)
+branch_rates[672].setValue(0.806619)
+branch_rates[673].setValue(0.799221)
+branch_rates[674].setValue(1.72034)
+branch_rates[675].setValue(1.17)
+branch_rates[676].setValue(0.917336)
+branch_rates[677].setValue(0.58128)
+branch_rates[678].setValue(0.941664)
+cg[1].setValue(0.11908)
+cg[2].setValue(0.348539)
+cg[3].setValue(0.602539)
+cg[4].setValue(0.394211)
+cg[5].setValue(0.328427)
+cg[6].setValue(0.402005)
+cg[7].setValue(0.240745)
+cg[8].setValue(0.618044)
+extinction.setValue(0.832067)
+gt[1].setValue(0.215381)
+gt[2].setValue(0.481661)
+gt[3].setValue(0.575815)
+gt[4].setValue(0.344653)
+gt[5].setValue(0.259646)
+gt[6].setValue(0.507412)
+gt[7].setValue(0.796979)
+gt[8].setValue(0.719886)
+mean_rt.setValue(1.04817)
+negative_tmrca_Circeae.setValue(-26.8048)
+negative_tmrca_Epilobium.setValue(-41.0467)
+negative_tmrca_Ludwigia.setValue(-84.6519)
+negative_tmrca_Lythraceae.setValue(-82.752)
+negative_tmrca_Skinnera.setValue(-23.0884)
+relative_extinction.setValue(0.974052)
+root_time.setValue(106.248)
+speciation.setValue(0.854232)
+tmrca_Circeae.setValue(26.8048)
+tmrca_Epilobium.setValue(41.0467)
+tmrca_Ludwigia.setValue(84.6519)
+tmrca_Lythraceae.setValue(82.752)
+tmrca_Skinnera.setValue(23.0884)
+starting_tree <- readTrees(base_dir + "/starting_trees/2-2.tree")[1]
+timetree.setValue(starting_tree)
+chain_num = 2
+run_num = 2
+
+# set the number of iterations in this chain segment
+n_iterations = 4000
+
+# set the number of iterations to sample from MCMC
+sample_freq = 5
+
+### finish model
+mymodel = model(timetree)
+
+### set up the monitors that will output parameter values to file and screen
+monitors[1] = mnFile(filename=base_dir + "output/" + chain_num + "-" + run_num + ".trees", printgen=sample_freq, timetree)
+monitors[2] = mnScreen(printgen=1, root_time, tmrca_Circeae, tmrca_Ludwigia, tmrca_Epilobium, tmrca_Lythraceae, tmrca_Skinnera)
+monitors[3] = mnModel(filename=base_dir + "output/" + chain_num + "-" + run_num + ".log", printgen=sample_freq)
+monitors[4] = mnFile(printgen=1, filename=base_dir + "output/screen" + chain_num + "-" + run_num + ".log", root_time, tmrca_Circeae, tmrca_Ludwigia, tmrca_Epilobium, tmrca_Lythraceae, tmrca_Skinnera)
+
+### workspace mcmc ###
+mymcmc = mcmc(mymodel, monitors, moves)
+
+### run the MCMC ###
+mymcmc.run(generations=n_iternations)
+
+q()
+
