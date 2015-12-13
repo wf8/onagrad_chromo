@@ -18,7 +18,7 @@ monitors[4] = mnFile(printgen=1, filename=base_dir + "output/screen" + chain_num
 mymcmc = mcmc(mymodel, monitors, moves)
 
 ### run the MCMC ###
-mymcmc.run(generations=n_iternations)
+mymcmc.run(generations=n_iterations)
 
 q()
 

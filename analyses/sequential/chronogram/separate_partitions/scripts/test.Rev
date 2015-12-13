@@ -4,7 +4,8 @@
 # with separate GTR+G for each partition
 
 # base directory
-base_dir = "/home/freyman/projects/onagrad_chromo/analyses/sequential/chronogram/separate_partitions/"
+#base_dir = "/home/freyman/projects/onagrad_chromo/analyses/sequential/chronogram/separate_partitions/"
+base_dir = "/Users/will/Documents/projects/onagraceae/chromosomes/analyses/sequential/chronogram/separate_partitions/"
 
 ########## Read in data
 

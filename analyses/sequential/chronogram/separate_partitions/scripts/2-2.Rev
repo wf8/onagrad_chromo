@@ -1097,7 +1097,6 @@ cg[5].setValue(0.328427)
 cg[6].setValue(0.402005)
 cg[7].setValue(0.240745)
 cg[8].setValue(0.618044)
-extinction.setValue(0.832067)
 gt[1].setValue(0.215381)
 gt[2].setValue(0.481661)
 gt[3].setValue(0.575815)
@@ -1106,20 +1105,9 @@ gt[5].setValue(0.259646)
 gt[6].setValue(0.507412)
 gt[7].setValue(0.796979)
 gt[8].setValue(0.719886)
-mean_rt.setValue(1.04817)
-negative_tmrca_Circeae.setValue(-26.8048)
-negative_tmrca_Epilobium.setValue(-41.0467)
-negative_tmrca_Ludwigia.setValue(-84.6519)
-negative_tmrca_Lythraceae.setValue(-82.752)
-negative_tmrca_Skinnera.setValue(-23.0884)
 relative_extinction.setValue(0.974052)
 root_time.setValue(106.248)
 speciation.setValue(0.854232)
-tmrca_Circeae.setValue(26.8048)
-tmrca_Epilobium.setValue(41.0467)
-tmrca_Ludwigia.setValue(84.6519)
-tmrca_Lythraceae.setValue(82.752)
-tmrca_Skinnera.setValue(23.0884)
 starting_tree <- readTrees(base_dir + "/starting_trees/2-2.tree")[1]
 timetree.setValue(starting_tree)
 chain_num = 2
@@ -1144,7 +1132,7 @@ monitors[4] = mnFile(printgen=1, filename=base_dir + "output/screen" + chain_num
 mymcmc = mcmc(mymodel, monitors, moves)
 
 ### run the MCMC ###
-mymcmc.run(generations=n_iternations)
+mymcmc.run(generations=n_iterations)
 
 q()
 

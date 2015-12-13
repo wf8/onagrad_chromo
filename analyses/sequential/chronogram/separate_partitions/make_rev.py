@@ -38,9 +38,9 @@ if segment_num > 1:
                     parameters[j][1] = value
 
     # add the parameter values to the Rev script
-    skip = ["Iteration", "Posterior", "Likelihood", "Prior"]
+    skip = ["Iteration", "Posterior", "Likelihood", "Prior", "extinction", "mean_rt"]
     for param in parameters:
-        if param[0] not in skip:
+        if param[0] not in skip and "tmrca" not in param[0]:
             final_script.append(param[0] + ".setValue(" + param[1] + ")\n")
 
     # get the last sampled tree
