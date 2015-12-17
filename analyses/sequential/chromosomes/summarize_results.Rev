@@ -1,0 +1,17 @@
+
+# set the run number
+run_num = 2 
+
+# set the number of iterations to sample from MCMC
+sample_freq = 5
+
+########## Read in data
+psi <- readTrees("test.tree")[1]
+
+
+
+anc_states = readAncestralStateTrace("output/uniform-anc"+ run_num + ".log")
+anc_trees = readAncestralStateTreeTrace("output/uniform" + run_num + ".trees", treetype="clock")
+
+ancestralStateTree(psi, anc_states, anc_trees, "results.tree", 100)
+
