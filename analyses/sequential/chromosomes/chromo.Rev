@@ -3,21 +3,17 @@
 # using reversible jump MCMC over both the anagenetic 
 # and cladogenetic parameters
 
-# source("/Users/will/Documents/projects/onagraceae/chromosomes/analyses/sequential/chromosomes/uniform1-clado.Rev")
-
-base_dir = "/Users/will/Documents/projects/onagraceae/chromosomes/analyses/sequential/chromosomes/"
-
 # set the run number
-run_num = 2 
+run_num = 1 
 
 # set the number of iterations to sample from MCMC
 sample_freq = 1
 
 ########## Read in data
-psi <- readTrees(base_dir + "test.tree")[1]
+psi <- readTrees("data/onagraceae_final_map.tree")[1]
 
 # Get the chromosome counts from a tab-delimited file.
-chromo_data = readCharacterDataDelimited(base_dir + "chromosome_counts.csv", type="NaturalNumbers", delimiter=",")
+chromo_data = readCharacterDataDelimited("data/chromosome_counts.csv", type="NaturalNumbers", delimiter=",")
 
 # set up an index for our MCMC moves
 mi = 0
@@ -30,10 +26,10 @@ mi = 0
 # dysploidy events along the branches of the phylogeny
 
 # rate of chromosome gains
-lambda ~ dnExponential(10.0)
+lambda ~ dnReversibleJumpMixture(constantValue=0.0, baseDistribution=dnExponential(10.0), p=0.5)
 
 # rate of chromosome losses
-delta ~ dnExponential(10.0)
+delta ~ dnReversibleJumpMixture(constantValue=0.0, baseDistribution=dnExponential(10.0), p=0.5)
 
 # rate of polyploidization
 rho ~ dnReversibleJumpMixture(constantValue=0.0, baseDistribution=dnExponential(10.0), p=0.5)
@@ -48,7 +44,7 @@ lambda_l ~ dnReversibleJumpMixture(constantValue=0.0, baseDistribution=dnExponen
 delta_l ~ dnReversibleJumpMixture(constantValue=0.0, baseDistribution=dnExponential(10.0), p=0.5)
 
 # We need to limit the maximum number of chromosomes,
-# so here we just use the largest chromosome count plus 11.
+# so here we just use the largest chromosome count times 2.
 max_chromo = 43
 
 # Create the rate matrix for chromosome number transitions.
@@ -60,29 +56,30 @@ root_frequencies := simplex(0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,
 #root_frequencies := simplex(rep(max_chromo, 1))
 
 # Add moves for each of the rates.
-moves[mi++] = mvScale(lambda, lambda=0.1, weight=2)
-moves[mi++] = mvScale(delta, lambda=0.1, weight=2)
-moves[mi++] = mvScale(rho, lambda=0.1, weight=2)
-moves[mi++] = mvScale(mu, lambda=0.1, weight=2)
-moves[mi++] = mvScale(lambda_l, lambda=0.1, weight=2)
-moves[mi++] = mvScale(delta_l, lambda=0.1, weight=2)
+moves[mi++] = mvScale(lambda, lambda=1.0, weight=2)
+moves[mi++] = mvScale(delta, lambda=1.0, weight=2)
+moves[mi++] = mvScale(rho, lambda=1.0, weight=2)
+moves[mi++] = mvScale(mu, lambda=1.0, weight=2)
+moves[mi++] = mvScale(lambda_l, lambda=1.0, weight=2)
+moves[mi++] = mvScale(delta_l, lambda=1.0, weight=2)
 
+moves[mi++] = mvRJSwitch(lambda, weight=2)
+moves[mi++] = mvRJSwitch(delta, weight=2)
 moves[mi++] = mvRJSwitch(rho, weight=2)
 moves[mi++] = mvRJSwitch(mu, weight=2)
 moves[mi++] = mvRJSwitch(lambda_l, weight=2)
 moves[mi++] = mvRJSwitch(delta_l, weight=2)
 
 # cladogenetic event types
-# TODO accept constantValues=0.0 
-clado_fission ~ dnReversibleJumpMixture(constantValue=0.0000001, baseDistribution=dnUniform(0,1), p=0.5)
-clado_fusion ~ dnReversibleJumpMixture(constantValue=0.0000001, baseDistribution=dnUniform(0,1), p=0.5)
-clado_polyploid ~ dnReversibleJumpMixture(constantValue=0.0000001, baseDistribution=dnUniform(0,1), p=0.5)
-clado_demipoly ~ dnReversibleJumpMixture(constantValue=0.0000001, baseDistribution=dnUniform(0,1), p=0.5)
+clado_fission ~ dnReversibleJumpMixture(constantValue=0, baseDistribution=dnUniform(0,1), p=0.5)
+clado_fusion ~ dnReversibleJumpMixture(constantValue=0, baseDistribution=dnUniform(0,1), p=0.5)
+clado_polyploid ~ dnReversibleJumpMixture(constantValue=0, baseDistribution=dnUniform(0,1), p=0.5)
+clado_demipoly ~ dnReversibleJumpMixture(constantValue=0, baseDistribution=dnUniform(0,1), p=0.5)
 
-moves[mi++] = mvScale(clado_fission, lambda=0.1, weight=2)
-moves[mi++] = mvScale(clado_fusion, lambda=0.1, weight=2)
-moves[mi++] = mvScale(clado_polyploid, lambda=0.1, weight=2)
-moves[mi++] = mvScale(clado_demipoly, lambda=0.1, weight=2)
+moves[mi++] = mvScale(clado_fission, lambda=1.0, weight=2)
+moves[mi++] = mvScale(clado_fusion, lambda=1.0, weight=2)
+moves[mi++] = mvScale(clado_polyploid, lambda=1.0, weight=2)
+moves[mi++] = mvScale(clado_demipoly, lambda=1.0, weight=2)
 
 moves[mi++] = mvRJSwitch(clado_fission, weight=2)
 moves[mi++] = mvRJSwitch(clado_fusion, weight=2)
@@ -90,22 +87,20 @@ moves[mi++] = mvRJSwitch(clado_polyploid, weight=2)
 moves[mi++] = mvRJSwitch(clado_demipoly, weight=2)
 
 clado_type := simplex([clado_fission, clado_fusion, clado_polyploid, clado_demipoly])
-clado_prob := fnChromosomesCladoProbs(clado_type, max_chromo + 1)
+clado_prob := fnChromosomesCladoProbs(clado_type, max_chromo)
 
 # Now another stochastic node for the chromosome evolution continuous-time Markov chain (CTMC).
 chromo_ctmc ~ dnPhyloCTMCClado(tree=psi, Q=R, cladoProbs=clado_prob, rootFrequencies=root_frequencies, nSites=1, type="NaturalNumbers" )
-#chromo_ctmc ~ dnPhyloCTMC(Q=R, tree=psi, rootFreq=root_frequencies, type="NaturalNumbers")
 
 # and clamp the chromosome counts data
 chromo_ctmc.clamp(chromo_data)
 
 
 ### set up the monitors that will output parameter values to file and screen
-monitors[1] = mnFile(filename=base_dir + "output/clado" + run_num + ".trees", printgen=sample_freq, psi)
+monitors[1] = mnFile(filename="output/chromo" + run_num + ".trees", printgen=sample_freq, psi)
 monitors[2] = mnScreen(printgen=1, lambda, lambda_l, delta, delta_l, rho, mu)
-monitors[3] = mnModel(filename=base_dir + "output/clado" + run_num + ".log", printgen=sample_freq)
-#monitors[4] = mnAncestralState(filename="output/uniform-anc"+ run_num + ".log", printgen=sample_freq, tree=psi, ctmc=chromo_ctmc, type="NaturalNumbers")
-monitors[4] = mnJointConditionalAncestralState(tree=psi, ctmc=chromo_ctmc, type="NaturalNumbers", printgen=sample_freq, withTips=true, withStartStates=true, filename=base_dir + "output/clado-anc"+ run_num + ".log")
+monitors[3] = mnModel(filename="output/chromo" + run_num + ".log", printgen=sample_freq)
+monitors[4] = mnJointConditionalAncestralState(tree=psi, ctmc=chromo_ctmc, type="NaturalNumbers", printgen=sample_freq, withTips=true, withStartStates=true, filename="output/chromo-anc"+ run_num + ".log")
 
 ### finish model
 mymodel = model(chromo_ctmc)
@@ -114,18 +109,9 @@ mymodel = model(chromo_ctmc)
 mymcmc = mcmc(mymodel, monitors, moves)
 
 ### pre-burnin to tune the proposals ###
-#mymcmc.burnin(generations=1000, tuningInterval=10)
+#mymcmc.burnin(generations=1000, tuningInterval=sample_freq)
 
 ### run the MCMC ###
-mymcmc.run(generations=10000000)
+mymcmc.run(generations=10000)
 
-### display proposal acceptance rates and tuning ###
-#mymcmc.operatorSummary()
-
-### summarize the trees ###
-#tt = readTreeTrace("output/UCLN.trees", "clock")
-#tt.summarize()
-
-### write MAP tree to file
-#mapTree(tt, "output/UCLN_MAP.tre")
 
