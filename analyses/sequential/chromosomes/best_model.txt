@@ -1,0 +1,28 @@
+MAP model = 1011100011
+posterior of MAP = 0.41
+
+ total num samples = 4002
+
+Posterior prob of models that include cladogenetic parameters:
+clado_demipoly = 1.0
+clado_fission = 0.21
+clado_fusion = 1.0
+clado_polyploid = 1.0
+
+Posterior prob of models that include anagenetic parameters:
+delta = 0.56
+delta_l = 0.02
+lambda = 0.04
+lambda_l = 0.0
+mu = 1.0
+rho = 1.0
+
+Other probs:
+any poly (clado or ana) = 1.0
+both clado and ana poly = 1.0
+clado_poly_no_ana_poly = 0.0
+ana_poly_no_clado_poly = 0.0
+
+Posterior prob of models that are all cladogenetic or all anagenetic:
+all_clado = 0.0
+all_ana = 0.0

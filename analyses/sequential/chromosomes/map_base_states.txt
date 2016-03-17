@@ -1,0 +1,3 @@
+Root MAP = 8, pp = 0.47
+Base Lyth MAP = 8, pp = 0.5
+Base Onag MAP = 8, pp = 0.76
