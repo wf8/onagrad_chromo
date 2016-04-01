@@ -1,0 +1,116 @@
+
+# script to estimate chronogram of Onagraceae using discretized UCLN model
+# and 5 node calibrations
+# with separate GTR+G for each partition
+
+# set the run number
+run_num = 1 
+
+# set the number of iterations to sample from MCMC
+sample_freq = 1
+
+########## Read in data
+psi <- readTrees("test.tree")[1]
+
+# Get the chromosome counts from a tab-delimited file.
+chromo_data <- readCharacterDataDelimited("chromosome_counts.csv", type="NaturalNumbers", delimiter=",")
+
+# get variables from alignments
+n_species = chromo_data.ntaxa()
+names = chromo_data.names()
+n_branches = 2 * n_species - 2
+
+# set up an index for our MCMC moves
+mi = 0
+
+
+
+####### Chromosome Model
+
+
+# We need to limit the maximum number of chromosomes,
+# so here we just use the largest chromosome count plus 11.
+max_chromo = 43
+
+# rate of chromosome gains
+lambda ~ dnExponential(10.0)
+
+# rate of chromosome losses
+delta ~ dnExponential(10.0)
+
+# rate of polyploidization
+rho ~ dnExponential(10.0)
+
+# rate of demi-polyploidization
+mu ~ dnExponential(10.0)
+
+# Add moves for each of the rates.
+moves[mi++] = mvScale(lambda, lambda=0.1, weight=20)
+moves[mi++] = mvScale(delta, lambda=0.1, weight=20)
+moves[mi++] = mvScale(rho, lambda=0.1, weight=20)
+moves[mi++] = mvScale(mu, lambda=0.1, weight=20)
+
+
+
+
+####### UCLN model on rates of chromosome evolution
+num_rate_categories = 4 #n_branches
+rate_probs = simplex(rep(1, num_rate_categories))
+#rate_categories := fnDiscretizeDistribution(dnExponential(1.0), num_rate_categories)
+rate_categories := fnDiscretizeDistribution(dnGamma(1.0,1.0), num_rate_categories)
+
+for (j in 1:n_branches) {
+
+
+    branch_rate[j] ~ dnMixture(rate_categories, rate_probs)
+    moves[++mi] = mvMixtureAllocation(branch_rate[j], delta=1, weight=100/n_branches)
+
+    # Create the rate matrix for chromosome number transitions.
+    R[j] := fnChromosomes(max_chromo, lambda * branch_rate[j], delta * branch_rate[j], rho * branch_rate[j], mu * branch_rate[j])
+
+}
+
+mean_branch_rate := mean(branch_rate)
+
+# We do not assume stationarity, so the root frequencies
+# are set flat, except state 0 which is given a prior probability of 0.
+root_frequencies := simplex(0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1)
+#root_frequencies := simplex(rep(max_chromo, 1))
+
+
+# Now another stochastic node for the chromosome evolution continuous-time Markov chain (CTMC).
+chromo_ctmc ~ dnPhyloCTMC(Q=R, tree=psi, rootFreq=root_frequencies, type="NaturalNumbers")
+
+# and clamp the chromosome counts data
+chromo_ctmc.clamp(chromo_data)
+
+
+
+### set up the monitors that will output parameter values to file and screen
+monitors[1] = mnFile(filename="output/ucln" + run_num + ".trees", printgen=sample_freq, psi)
+monitors[2] = mnScreen(printgen=1, lambda, delta, rho, mu, mean_branch_rate)
+monitors[3] = mnModel(filename="output/ucln" + run_num + ".log", printgen=sample_freq)
+monitors[4] = mnAncestralState(filename="output/ucln-anc"+ run_num + ".log", printgen=sample_freq, tree=psi, ctmc=chromo_ctmc, type="NaturalNumbers")
+
+### finish model
+mymodel = model(chromo_ctmc)
+
+### workspace mcmc ###
+mymcmc = mcmc(mymodel, monitors, moves)
+
+### pre-burnin to tune the proposals ###
+#mymcmc.burnin(generations=1000, tuningInterval=10)
+
+### run the MCMC ###
+mymcmc.run(generations=10000000)
+
+### display proposal acceptance rates and tuning ###
+#mymcmc.operatorSummary()
+
+### summarize the trees ###
+#tt = readTreeTrace("output/UCLN.trees", "clock")
+#tt.summarize()
+
+### write MAP tree to file
+#mapTree(tt, "output/UCLN_MAP.tre")
+
