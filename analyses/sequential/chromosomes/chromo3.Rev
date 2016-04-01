@@ -4,7 +4,7 @@
 # and cladogenetic parameters
 
 # set the run number
-run_num = 1 
+run_num = 3 
 
 # set the number of iterations to sample from MCMC
 sample_freq = 1
@@ -71,23 +71,31 @@ moves[mi++] = mvRJSwitch(lambda_l, weight=2)
 moves[mi++] = mvRJSwitch(delta_l, weight=2)
 
 # cladogenetic event types
-clado_fission ~ dnReversibleJumpMixture(constantValue=0, baseDistribution=dnUniform(0,1), p=0.5)
-clado_fusion ~ dnReversibleJumpMixture(constantValue=0, baseDistribution=dnUniform(0,1), p=0.5)
-clado_polyploid ~ dnReversibleJumpMixture(constantValue=0, baseDistribution=dnUniform(0,1), p=0.5)
-clado_demipoly ~ dnReversibleJumpMixture(constantValue=0, baseDistribution=dnUniform(0,1), p=0.5)
+clado_no_change_pr ~ dnExponential(10.0)
+clado_fission_pr ~ dnReversibleJumpMixture(constantValue=0, baseDistribution=dnExponential(10.0), p=0.5)
+clado_fusion_pr ~ dnReversibleJumpMixture(constantValue=0, baseDistribution=dnExponential(10.0), p=0.5)
+clado_polyploid_pr ~ dnReversibleJumpMixture(constantValue=0, baseDistribution=dnExponential(10.0), p=0.5)
+clado_demipoly_pr ~ dnReversibleJumpMixture(constantValue=0, baseDistribution=dnExponential(10.0), p=0.5)
 
-moves[mi++] = mvScale(clado_fission, lambda=1.0, weight=2)
-moves[mi++] = mvScale(clado_fusion, lambda=1.0, weight=2)
-moves[mi++] = mvScale(clado_polyploid, lambda=1.0, weight=2)
-moves[mi++] = mvScale(clado_demipoly, lambda=1.0, weight=2)
+moves[mi++] = mvScale(clado_no_change_pr, lambda=1.0, weight=2)
+moves[mi++] = mvScale(clado_fission_pr, lambda=1.0, weight=2)
+moves[mi++] = mvScale(clado_fusion_pr, lambda=1.0, weight=2)
+moves[mi++] = mvScale(clado_polyploid_pr, lambda=1.0, weight=2)
+moves[mi++] = mvScale(clado_demipoly_pr, lambda=1.0, weight=2)
 
-moves[mi++] = mvRJSwitch(clado_fission, weight=2)
-moves[mi++] = mvRJSwitch(clado_fusion, weight=2)
-moves[mi++] = mvRJSwitch(clado_polyploid, weight=2)
-moves[mi++] = mvRJSwitch(clado_demipoly, weight=2)
+moves[mi++] = mvRJSwitch(clado_fission_pr, weight=2)
+moves[mi++] = mvRJSwitch(clado_fusion_pr, weight=2)
+moves[mi++] = mvRJSwitch(clado_polyploid_pr, weight=2)
+moves[mi++] = mvRJSwitch(clado_demipoly_pr, weight=2)
 
-clado_type := simplex([clado_fission, clado_fusion, clado_polyploid, clado_demipoly])
+clado_type := simplex([clado_no_change_pr, clado_fission_pr, clado_fusion_pr, clado_polyploid_pr, clado_demipoly_pr])
 clado_prob := fnChromosomesCladoProbs(clado_type, max_chromo)
+
+clado_no_change := clado_type[1]
+clado_fission := clado_type[2]
+clado_fusion := clado_type[3]
+clado_polyploid := clado_type[4]
+clado_demipoly := clado_type[5]
 
 # Now another stochastic node for the chromosome evolution continuous-time Markov chain (CTMC).
 chromo_ctmc ~ dnPhyloCTMCClado(tree=psi, Q=R, cladoProbs=clado_prob, rootFrequencies=root_frequencies, nSites=1, type="NaturalNumbers" )
@@ -112,6 +120,6 @@ mymcmc = mcmc(mymodel, monitors, moves)
 #mymcmc.burnin(generations=1000, tuningInterval=sample_freq)
 
 ### run the MCMC ###
-mymcmc.run(generations=10000)
+mymcmc.run(generations=2200)
 
 

@@ -4,7 +4,7 @@
 # and cladogenetic parameters
 
 # set the run number
-run_num = 2 
+run_num = 4 
 
 # set the number of iterations to sample from MCMC
 sample_freq = 1
