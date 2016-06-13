@@ -5,9 +5,12 @@ import itertools
 import operator
 
 
-f = ["output/chromo-anc1.log", "output/chromo-anc2.log"]
+f = ["output/chromo-anc1.log", "output/chromo-anc2.log",
+     "output/chromo-anc3.log", "output/chromo-anc4.log",
+     "output/chromo-anc5.log"]
+
 n = 340 # number of tips
-burnin = 100
+burnin = 10 # per trace
 
 # node ids
 root = 678

@@ -5,11 +5,26 @@ import itertools
 import operator
 
 
-files = ["output/chromo1.log", "output/chromo2.log"]
+files = ["output/chromo1.log", "output/chromo2.log",
+         "output/chromo3.log", "output/chromo4.log",
+         "output/chromo5.log"]
 
+#Iteration   Posterior   Likelihood  Prior   clado_demipoly  clado_demipoly_pr   clado_fission   clado_fission_pr    clado_fusion    clado_fusion_pr clado_no_change clado_no_change_pr  clado_polyploid clado_polyploid_pr  clado_type[1]   clado_type[2]   clado_type[3]   clado_type[4]   clado_type[5]   clado_type[1]   clado_type[2]   clado_type[3]   clado_type[4]   clado_type[5]   delta   delta_l lambda  lambda_l    mu  rho
 
-#Iteration   Posterior   Likelihood  Prior   clado_demipoly  clado_fission   clado_fusion    clado_polyploid clado_type[1]   clado_type[2]   clado_type[3]   clado_type[4]   delta   delta_l lambda  lambda_l    mu  rho
+# log file columns
+demipoly_i = 5
+fission_i = 7
+fusion_i = 9
+no_change_i = 11
+polyploid_i = 13
+delta_i = 24
+delta_l_i = 25
+lambda_i = 26
+lambda_l_i = 27
+mu_i = 28
+rho_i = 29
 
+# sample counts
 samples = 0
 clado_demipoly = 0
 clado_fission = 0
@@ -57,56 +72,56 @@ for f in files:
                 bitstring = ""
                 samples += 1
 
-                if row[4] == "0":
+                if row[demipoly_i] == "0":
                     clado_demipoly += 1
                     bitstring += "0"
                 else:
                     bitstring += "1"
-                if row[5] == "0":
+                if row[fission_i] == "0":
                     clado_fission += 1
                     bitstring += "0"
                 else:
                     bitstring += "1"
-                if row[6] == "0":
+                if row[fusion_i] == "0":
                     clado_fusion += 1
                     bitstring += "0"
                 else:
                     bitstring += "1"
-                if row[7] == "0":
+                if row[polyploid_i] == "0":
                     clado_polyploid += 1
                     bitstring += "0"
                 else:
                     bitstring += "1"
                 
-                if row[4] == "0" and row[5] == "0" and row[6] == "0" and row[7] == "0":
+                if row[demipoly_i] == "0" and row[fission_i] == "0" and row[fusion_i] == "0" and row[polyploid_i] == "0":
                     all_ana += 1
 
-                if row[12] == "0":
+                if row[delta_i] == "0":
                     delta += 1
                     bitstring += "0"
                 else:
                     bitstring += "1"
-                if row[13] == "0" or (row[13] != "0" and row[12] == "0"):
+                if row[delta_l_i] == "0" or (row[delta_l_i] != "0" and row[delta_i] == "0"):
                     delta_l += 1
                     bitstring += "0"
                 else:
                     bitstring += "1"
-                if row[14] == "0":
+                if row[lambda_i] == "0":
                     lambda_ += 1
                     bitstring += "0"
                 else:
                     bitstring += "1"
-                if row[15] == "0" or (row[15] != "0" and row[14] == "0"):
+                if row[lambda_l_i] == "0" or (row[lambda_l_i] != "0" and row[lambda_i] == "0"):
                     lambda_l += 1
                     bitstring += "0"
                 else:
                     bitstring += "1"
-                if row[16] == "0":
+                if row[mu_i] == "0":
                     mu += 1
                     bitstring += "0"
                 else:
                     bitstring += "1"
-                if row[17] == "0":
+                if row[rho_i] == "0":
                     rho += 1
                     bitstring += "0"
                 else:
@@ -114,16 +129,16 @@ for f in files:
 
                 bitstrings.append(bitstring)
 
-                if row[12] == "0" and row[14] == "0" and row[16] == "0" and row[17] == "0":
+                if row[delta_i] == "0" and row[lambda_i] == "0" and row[mu_i] == "0" and row[rho_i] == "0":
                     all_clado += 1
 
-                if row[7] != "0" and row[17] == "0":
+                if row[polyploid_i] != "0" and row[rho_i] == "0":
                     clado_poly_no_ana_poly += 1
-                if row[7] == "0" and row[17] != "0":
+                if row[polyploid_i] == "0" and row[rho_i] != "0":
                     ana_poly_no_clado_poly += 1
-                if row[7] != "0" and row[17] != "0":
+                if row[polyploid_i] != "0" and row[rho_i] != "0":
                     both_poly += 1
-                if row[7] != "0" or row[17] != "0":
+                if row[polyploid_i] != "0" or row[rho_i] != "0":
                     either_poly += 1
 
 maxx = most_common(bitstrings)
