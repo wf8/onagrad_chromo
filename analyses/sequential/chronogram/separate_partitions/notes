@@ -1,2 +1,9 @@
 4 independent replicates
 The simulator uses 763 different moves in a random move schedule with 837 moves per iteration
+
+4 separate runs, 15000 iterations each, sampled every 10 iterations, 
+discarded the first 50% of samples
+
+Compiled MAP tree from the remaining 3000 tree samples
+
+.

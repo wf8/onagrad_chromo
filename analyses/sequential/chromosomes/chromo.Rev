@@ -7,10 +7,16 @@
 run_num = 1 
 
 # set the number of iterations to sample from MCMC
-sample_freq = 1
+sample_freq = 10
 
 ########## Read in data
 psi <- readTrees("data/onagraceae_final_map.tree")[1]
+
+# calculate tree length
+t_len = 0
+for (i in 1:psi.nnodes()) {
+    t_len = t_len + psi.branchLength(i)
+}
 
 # Get the chromosome counts from a tab-delimited file.
 chromo_data = readCharacterDataDelimited("data/chromosome_counts.csv", type="NaturalNumbers", delimiter=",")
@@ -22,36 +28,39 @@ mi = 0
 
 ####### Chromosome Model
 
+# We need to limit the maximum number of chromosomes,
+# so here we just use the largest chromosome count + 10.
+max_chromo = 43
+
+# we'll set the mean prior for all rates to 4 events
+rate_pr <- t_len / 4
+
 # We'll use exponential priors to model the rates of polyploidy and
 # dysploidy events along the branches of the phylogeny
 
 # rate of chromosome gains
-lambda ~ dnReversibleJumpMixture(constantValue=0.0, baseDistribution=dnExponential(10.0), p=0.5)
+lambda ~ dnReversibleJumpMixture(constantValue=0.0, baseDistribution=dnExponential(rate_pr), p=0.5)
 
 # rate of chromosome losses
-delta ~ dnReversibleJumpMixture(constantValue=0.0, baseDistribution=dnExponential(10.0), p=0.5)
+delta ~ dnReversibleJumpMixture(constantValue=0.0, baseDistribution=dnExponential(rate_pr), p=0.5)
 
 # rate of polyploidization
-rho ~ dnReversibleJumpMixture(constantValue=0.0, baseDistribution=dnExponential(10.0), p=0.5)
+rho ~ dnReversibleJumpMixture(constantValue=0.0, baseDistribution=dnExponential(rate_pr), p=0.5)
 
 # rate of demi-polyploidization
-mu ~ dnReversibleJumpMixture(constantValue=0.0, baseDistribution=dnExponential(10.0), p=0.5)
+mu ~ dnReversibleJumpMixture(constantValue=0.0, baseDistribution=dnExponential(rate_pr), p=0.5)
 
-# linear component of rate of gain based on current number of chromosomes
-lambda_l ~ dnReversibleJumpMixture(constantValue=0.0, baseDistribution=dnExponential(10.0), p=0.5)
+# rate modifier for gains based on current number of chromosomes
+lambda_l ~ dnReversibleJumpMixture(constantValue=0.0, baseDistribution=dnExponential(-3/max_chromo, 3/max_chromo)), p=0.5)
 
-# linear component of rate of losss based on current number of chromosomes
-delta_l ~ dnReversibleJumpMixture(constantValue=0.0, baseDistribution=dnExponential(10.0), p=0.5)
+# rate modifier for losses based on current number of chromosomes
+delta_l ~ dnReversibleJumpMixture(constantValue=0.0, baseDistribution=dnExponential(-3/max_chromo, 3/max_chromo)), p=0.5)
 
-# We need to limit the maximum number of chromosomes,
-# so here we just use the largest chromosome count times 2.
-max_chromo = 43
 
 # Create the rate matrix for chromosome number transitions.
 R := fnChromosomes(max_chromo, lambda, delta, rho, mu, lambda_l, delta_l)
 
-# We do not assume stationarity, so the root frequencies
-# are set flat, except state 0 which is given a prior probability of 0.
+# root frequencies are set flat, except state 0 which is given a prior probability of 0.
 root_frequencies := simplex(0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1)
 #root_frequencies := simplex(rep(max_chromo, 1))
 
@@ -71,10 +80,11 @@ moves[mi++] = mvRJSwitch(lambda_l, weight=2)
 moves[mi++] = mvRJSwitch(delta_l, weight=2)
 
 # cladogenetic event types
-clado_fission ~ dnReversibleJumpMixture(constantValue=0, baseDistribution=dnUniform(0,1), p=0.5)
-clado_fusion ~ dnReversibleJumpMixture(constantValue=0, baseDistribution=dnUniform(0,1), p=0.5)
-clado_polyploid ~ dnReversibleJumpMixture(constantValue=0, baseDistribution=dnUniform(0,1), p=0.5)
-clado_demipoly ~ dnReversibleJumpMixture(constantValue=0, baseDistribution=dnUniform(0,1), p=0.5)
+clado_no_change_pr ~ dnExponential(10.0)
+clado_fission ~ dnReversibleJumpMixture(constantValue=0, baseDistribution=dnExponential(10.0), p=0.5)
+clado_fusion ~ dnReversibleJumpMixture(constantValue=0, baseDistribution=dnExponential(10.0), p=0.5)
+clado_polyploid ~ dnReversibleJumpMixture(constantValue=0, baseDistribution=dnExponential(10.0), p=0.5)
+clado_demipoly ~ dnReversibleJumpMixture(constantValue=0, baseDistribution=dnExponential(10.0), p=0.5)
 
 moves[mi++] = mvScale(clado_fission, lambda=1.0, weight=2)
 moves[mi++] = mvScale(clado_fusion, lambda=1.0, weight=2)
@@ -86,7 +96,7 @@ moves[mi++] = mvRJSwitch(clado_fusion, weight=2)
 moves[mi++] = mvRJSwitch(clado_polyploid, weight=2)
 moves[mi++] = mvRJSwitch(clado_demipoly, weight=2)
 
-clado_type := simplex([clado_fission, clado_fusion, clado_polyploid, clado_demipoly])
+clado_type := simplex([clado_no_change_pr, clado_fission, clado_fusion, clado_polyploid, clado_demipoly])
 clado_prob := fnChromosomesCladoProbs(clado_type, max_chromo)
 
 # Now another stochastic node for the chromosome evolution continuous-time Markov chain (CTMC).
@@ -107,9 +117,6 @@ mymodel = model(chromo_ctmc)
 
 ### workspace mcmc ###
 mymcmc = mcmc(mymodel, monitors, moves)
-
-### pre-burnin to tune the proposals ###
-#mymcmc.burnin(generations=1000, tuningInterval=sample_freq)
 
 ### run the MCMC ###
 mymcmc.run(generations=10000)
