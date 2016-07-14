@@ -10,7 +10,7 @@ f = ["output/chromo-anc1.log", "output/chromo-anc2.log",
      "output/chromo-anc5.log"]
 
 n = 340 # number of tips
-burnin = 10 # per trace
+burnin = 20 # per trace
 
 # node ids
 root = 678
