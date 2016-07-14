@@ -2,8 +2,8 @@
 run_num = 1 
 
 psi <- readTrees("data/onagraceae_final_map.tree")[1]
-anc_states = readAncestralStateTrace("output/chromo-anc" + run_num + ".log.final.log")
-anc_trees = readAncestralStateTreeTrace("output/chromo" + run_num + ".trees", treetype="clock")
+anc_states = readAncestralStateTrace("output/chromo-anc-final.log")
+anc_trees = readAncestralStateTreeTrace("output/chromo-anc-final.trees", treetype="clock")
 
-ancestralStateTree(psi, anc_states, anc_trees, "results.tree", 50)
+ancestralStateTree(psi, anc_states, anc_trees, include_start_states=true, "results.tree", burnin=0)
 
