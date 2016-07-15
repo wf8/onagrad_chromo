@@ -4,12 +4,12 @@
 # and cladogenetic parameters
 
 # set the number of iterations to sample from MCMC
-sample_freq = 10
+sample_freq = 2
 
 ########## Read in data
 psi <- readTrees("data/onagraceae_final_map.tree")[1]
 
-# calculate tree length
+# calculate tree length = 3660.54
 t_len = 0
 for (i in 1:psi.nnodes()) {
     t_len = t_len + psi.branchLength(i)
@@ -29,8 +29,8 @@ mi = 0
 # so here we just use the largest chromosome count + 10.
 max_chromo = 43
 
-# we'll set the mean prior for all rates to 4 events
-rate_pr <- t_len / 4
+# we'll set the mean prior for all rates to 10 events
+rate_pr <- t_len / 10
 
 # We'll use exponential priors to model the rates of polyploidy and
 # dysploidy events along the branches of the phylogeny
