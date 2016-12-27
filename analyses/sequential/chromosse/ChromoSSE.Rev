@@ -186,4 +186,4 @@ mymcmc.run(generations=mcmc_iterations)
 # make summary tree
 #ancestralStateTree(psi, anc_states, include_start_states=true, "output/ancestral_states_results.tree", burnin)
 
-#q()
+q()

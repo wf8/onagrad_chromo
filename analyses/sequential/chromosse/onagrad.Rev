@@ -1,6 +1,4 @@
 
-
-
 #
 # ChromoSSE: Cladogenetic and Anagenetic Phylogenetic Models of Chromosome Number Evolution
 # 
@@ -48,4 +46,4 @@ burnin = 0
 sample_freq = 50
 
 # Now run the ChromoSSE analysis:
-source(base_dir + "./ChromoSSE.Rev")
+source(base_dir + "ChromoSSE.Rev")
