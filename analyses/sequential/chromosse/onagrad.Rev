@@ -1,0 +1,51 @@
+
+
+
+#
+# ChromoSSE: Cladogenetic and Anagenetic Phylogenetic Models of Chromosome Number Evolution
+# 
+# Will Freyman, UC Berkeley
+# freyman@berkeley.edu
+# http://willfreyman.org
+#
+#
+# This script sets up and runs a ChromoSSE analysis for the Onagraceae dataset.
+#
+# We run 24 independent replicates of this analysis. Each rep is run for 12500 
+# MCMC iterations, with samples drawn every 50 iterations. This results in 250 
+# samples per rep, of which the first 50 will be discarded as burnin and the 
+# rest combined into a single set of 24 * 200 = 4800 samples.
+#
+
+n_time_slices = 2000
+base_dir = ""
+
+# Read in the tree:
+psi <- readTrees(base_dir + "data/onagraceae_final_map.tree")[1]
+
+# We need to limit the maximum number of chromosomes,
+# so here we just use the largest chromosome count plus 10:
+max_chromo = 43
+
+# Get the observed chromosome counts from a tab-delimited file:
+chromo_data = readCharacterDataDelimited(base_dir + "data/chromosome_counts.csv", stateLabels=(max_chromo + 1), type="NaturalNumbers", delimiter=",", headers=FALSE)
+
+# Here we set the expected number of anagenetic events used for prior mean.
+ana_events = 10
+
+# the probability of sampling species at the present:
+# the number of species in Onagraceae is ~650 and Lythraceae ~620
+# we have 340 tips in our sample. so rho = 340/1270 ~ 0.27
+rho_bd = 0.27
+
+# Set the total number of MCMC iterations to run:
+mcmc_iterations = 12500
+
+# here we will exclude samples after combing multiple runs so set burnin:
+burnin = 0
+
+# Set the number of iterations to sample from MCMC:
+sample_freq = 50
+
+# Now run the ChromoSSE analysis:
+source(base_dir + "./ChromoSSE.Rev")
