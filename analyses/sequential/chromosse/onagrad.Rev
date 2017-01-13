@@ -15,7 +15,7 @@
 # rest combined into a single set of 24 * 200 = 4800 samples.
 #
 
-n_time_slices = 2000
+n_time_slices = 500
 base_dir = ""
 
 # Read in the tree:
@@ -23,18 +23,13 @@ psi <- readTrees(base_dir + "data/onagraceae_final_map.tree")[1]
 
 # We need to limit the maximum number of chromosomes,
 # so here we just use the largest chromosome count plus 10:
-max_chromo = 43
+max_chromo <- 43
 
 # Get the observed chromosome counts from a tab-delimited file:
-chromo_data = readCharacterDataDelimited(base_dir + "data/chromosome_counts.csv", stateLabels=(max_chromo + 1), type="NaturalNumbers", delimiter=",", headers=FALSE)
+chromo_data <- readCharacterDataDelimited(base_dir + "data/chromosome_counts.csv", stateLabels=(max_chromo + 1), type="NaturalNumbers", delimiter=",", headers=FALSE)
 
 # Here we set the expected number of anagenetic events used for prior mean.
-ana_events = 10
-
-# the probability of sampling species at the present:
-# the number of species in Onagraceae is ~650 and Lythraceae ~620
-# we have 340 tips in our sample. so rho = 340/1270 ~ 0.27
-rho_bd = 0.27
+#ana_events <- 10
 
 # Set the total number of MCMC iterations to run:
 mcmc_iterations = 12500
