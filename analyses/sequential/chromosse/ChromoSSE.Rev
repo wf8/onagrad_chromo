@@ -34,17 +34,17 @@ moves[mi++] = mvScale(ana_events, lambda=1.0, weight=20/total_moves)
 moves[mi++] = mvScale(ana_events, lambda=10.0, weight=20/total_moves)
 
 # calculate the inverse of the expected rate for 2 anagenetic events
-rate_pr := t_len / ana_events
+# rate_pr := t_len / ana_events
 
 rate_multipliers_prior <- rep(1, 4)
 rate_multipliers ~ dnDirichlet(rate_multipliers_prior)
 moves[mi++] = mvBetaSimplex(rate_multipliers, alpha=0.5, weight=5/total_moves)
 moves[mi++] = mvElementSwapSimplex(rate_multipliers, weight=5/total_moves)
 
-gamma_pr := rate_pr * rate_multipliers[1]
-delta_pr := rate_pr * rate_multipliers[2]
-rho_pr := rate_pr * rate_multipliers[3]
-eta_pr := rate_pr * rate_multipliers[4]
+gamma_pr := t_len / (ana_events * rate_multipliers[1])
+delta_pr := t_len / (ana_events * rate_multipliers[2])
+rho_pr := t_len / (ana_events * rate_multipliers[3])
+eta_pr := t_len / (ana_events * rate_multipliers[4])
 
 # anagenetic rate of chromosome gains
 gamma ~ dnReversibleJumpMixture(constantValue=0.0, baseDistribution=dnExponential(gamma_pr), p=0.5)
