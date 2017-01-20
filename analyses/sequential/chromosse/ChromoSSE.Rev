@@ -27,11 +27,10 @@ for (i in 1:psi.nnodes()) {
     t_len = t_len + psi.branchLength(i)
 }
 
-ana_events ~ dnUniform(1, 200)
+ana_events ~ dnUniform(1, 50)
 ana_events.setValue(10.0)
 moves[mi++] = mvScale(ana_events, lambda=1.0, weight=20)
 moves[mi++] = mvScale(ana_events, lambda=10.0, weight=20)
-#ana_events <- 2
 
 # calculate the inverse of the expected rate for 2 anagenetic events
 # rate_pr := t_len / ana_events
