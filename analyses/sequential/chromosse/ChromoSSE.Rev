@@ -12,50 +12,49 @@
 
 
 # set an index for the MCMC moves
-mi = 0
+mi = 1
 
 
 ####### Chromosome Model
 
 
-# We'll use exponential priors to model the rates of polyploidy and
-# dysploidy events along the branches of the phylogeny
+# anagenetic rates
 
-# calculate tree length
-t_len = 0
-for (i in 1:psi.nnodes()) {
-    t_len = t_len + psi.branchLength(i)
-}
+#ana_events ~ dnUniform(1, 50)
+#ana_events.setValue(2)
+#moves[mi++] = mvScale(ana_events, lambda=2, weight=5)
+#
+#rate_multipliers_prior <- rep(1, 4)
+#rate_multipliers ~ dnDirichlet(rate_multipliers_prior)
+#moves[mi++] = mvBetaSimplex(rate_multipliers, alpha=0.5, weight=4)
+#moves[mi++] = mvElementSwapSimplex(rate_multipliers, weight=4)
+#
+#t_len <- psi.treeLength()
+#
+#gamma_events := ana_events * rate_multipliers[1]
+#delta_events := ana_events * rate_multipliers[2]
+#rho_events := ana_events * rate_multipliers[3]
+#eta_events := ana_events * rate_multipliers[4]
+#
+#gamma_pr := t_len / gamma_events
+#delta_pr := t_len / delta_events
+#rho_pr := t_len / rho_events
+#eta_pr := t_len / eta_events
 
-ana_events ~ dnUniform(1, 50)
-ana_events.setValue(10.0)
-moves[mi++] = mvScale(ana_events, lambda=1.0, weight=20)
-moves[mi++] = mvScale(ana_events, lambda=10.0, weight=20)
-
-# calculate the inverse of the expected rate for 2 anagenetic events
-# rate_pr := t_len / ana_events
-
-rate_multipliers_prior <- rep(1, 4)
-rate_multipliers ~ dnDirichlet(rate_multipliers_prior)
-moves[mi++] = mvBetaSimplex(rate_multipliers, alpha=0.5, weight=5)
-moves[mi++] = mvElementSwapSimplex(rate_multipliers, weight=5)
-
-gamma_pr := t_len / (ana_events * rate_multipliers[1])
-delta_pr := t_len / (ana_events * rate_multipliers[2])
-rho_pr := t_len / (ana_events * rate_multipliers[3])
-eta_pr := t_len / (ana_events * rate_multipliers[4])
+t_len <- psi.treeLength()
+rate_pr := t_len / 2
 
 # anagenetic rate of chromosome gains
-gamma ~ dnReversibleJumpMixture(constantValue=0.0, baseDistribution=dnExponential(gamma_pr), p=0.5)
+gamma ~ dnReversibleJumpMixture(constantValue=0.0, baseDistribution=dnExponential(rate_pr), p=0.5)
 
 # anagenetic rate of chromosome losses
-delta ~ dnReversibleJumpMixture(constantValue=0.0, baseDistribution=dnExponential(delta_pr), p=0.5)
+delta ~ dnReversibleJumpMixture(constantValue=0.0, baseDistribution=dnExponential(rate_pr), p=0.5)
 
 # anagenetic rate of polyploidization
-rho ~ dnReversibleJumpMixture(constantValue=0.0, baseDistribution=dnExponential(rho_pr), p=0.5)
+rho ~ dnReversibleJumpMixture(constantValue=0.0, baseDistribution=dnExponential(rate_pr), p=0.5)
 
 # anagenetic rate of demi-polyploidization
-eta ~ dnReversibleJumpMixture(constantValue=0.0, baseDistribution=dnExponential(eta_pr), p=0.5)
+eta ~ dnReversibleJumpMixture(constantValue=0.0, baseDistribution=dnExponential(rate_pr), p=0.5)
 
 # linear component of rate of gain based on current number of chromosomes
 gamma_l ~ dnReversibleJumpMixture(constantValue=0.0, baseDistribution=dnUniform(-3/max_chromo, 3/max_chromo), p=0.5)
@@ -104,10 +103,10 @@ speciation_pr <- 1 / speciation_mean
 
 clado_no_change ~ dnExponential(speciation_pr)
 
-clado_fission ~ dnReversibleJumpMixture(constantValue=0.0, baseDistribution=dnExponential(speciation_pr), p=0.5)
-clado_fusion ~ dnReversibleJumpMixture(constantValue=0.0, baseDistribution=dnExponential(speciation_pr), p=0.5)
-clado_polyploid ~ dnReversibleJumpMixture(constantValue=0.0, baseDistribution=dnExponential(speciation_pr), p=0.5)
-clado_demipoly ~ dnReversibleJumpMixture(constantValue=0.0, baseDistribution=dnExponential(speciation_pr), p=0.5)
+clado_fission ~ dnReversibleJumpMixture(constantValue=0.0, baseDistribution=dnExponential( speciation_pr * (1/0.01) ), p=0.5)
+clado_fusion ~ dnReversibleJumpMixture(constantValue=0.0, baseDistribution=dnExponential( speciation_pr * (1/0.01) ), p=0.5)
+clado_polyploid ~ dnReversibleJumpMixture(constantValue=0.0, baseDistribution=dnExponential( speciation_pr * (1/0.01) ), p=0.5)
+clado_demipoly ~ dnReversibleJumpMixture(constantValue=0.0, baseDistribution=dnExponential( speciation_pr * (1/0.01) ), p=0.5)
 
 clado_no_change.setValue(speciation_mean)
 clado_fission.setValue(0.01)
@@ -169,7 +168,7 @@ chromotree ~ dnCDCladoBDP( rootAge            = psi.rootAge(),
                     Q                         = R,
                     delta                     = 1.0,
                     pi                        = root_frequencies,
-                    rho                       = 1.0,
+                    rho                       = rho_s,
                     condition                 = "time",
                     taxa                      = taxa,
                     nTimeSlices               = n_time_slices )
@@ -181,7 +180,7 @@ chromotree.clampCharData(chromo_data)
 
 
 ### set up the monitors that will output parameter values to file and screen
-monitors[1] = mnScreen(printgen=sample_freq, ana_events, gamma, gamma_l, delta, delta_l, rho, eta, clado_no_change, clado_fission, clado_fusion, clado_polyploid, clado_demipoly,turnover,total_speciation)
+monitors[1] = mnScreen(printgen=sample_freq, gamma, gamma_l, delta, delta_l, rho, eta, clado_no_change, clado_fission, clado_fusion, clado_polyploid, clado_demipoly,turnover,total_speciation)
 monitors[2] = mnModel(filename=base_dir + "output/chromosse" + rep + ".log", printgen=sample_freq)
 monitors[3] = mnJointConditionalAncestralState(tree=psi, cdbdp=chromotree, type="NaturalNumbers", printgen=sample_freq, withTips=true, withStartStates=true, filename="output/chromosse-nodes-anc" + rep + ".log")
 monitors[4] = mnJointConditionalCharacterMapping(cdbdp=chromotree, printgen=sample_freq, filename=base_dir + "output/chromosse-anc" + rep + ".log", include_simmap=true)

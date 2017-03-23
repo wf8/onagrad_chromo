@@ -5,6 +5,10 @@ burnin=0
 n_time_slices = 500
 psi <- readTrees("data/onagraceae_final_map.tree")[1]
 
+psi.dropTip("Lythrum_junceum")
+psi.dropTip("Lythrum_portula")
+psi.dropTip("Peplis_portula")
+
 # read in the sampled character histories
 anc_states = readAncestralStateTrace("output/combined-anc.log")
 

@@ -4,7 +4,10 @@ import csv
 import itertools
 import operator
 
+csv.field_size_limit(2147483647)
+
 burnin = 50 # per trace
+#burnin = 50 # per trace
 sample_freq = 1 # number of iterations per sample
 n_runs = 24 # number of MCMC runs to combine
 
