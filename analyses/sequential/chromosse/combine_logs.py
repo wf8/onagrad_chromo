@@ -6,13 +6,14 @@ import operator
 
 burnin = 50 # per trace
 sample_freq = 1 # number of iterations per sample
+n_runs = 24 # number of MCMC runs to combine
 
 print("Combining parameter traces...")
 
 final_csv = []
 gen = 0
 header_done = False
-for log in range(1, 25):
+for log in range(1, n_runs + 1):
     with open("output/chromosse" + str(log) + ".log", 'r') as csvfile:
         lines_to_skip = 0
         csvreader = csv.reader(csvfile, delimiter="\t")
@@ -43,7 +44,7 @@ print("Combining ancestral state traces...")
 final_csv = []
 gen = 0
 header_done = False
-for log in range(1, 25):
+for log in range(1, n_runs + 1):
     with open("output/chromosse-anc" + str(log) + ".log", 'r') as csvfile:
         lines_to_skip = 0
         csvreader = csv.reader(csvfile, delimiter="\t")
