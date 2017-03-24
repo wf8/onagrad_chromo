@@ -16,7 +16,7 @@
 #
 
 n_time_slices = 500
-base_dir = ""
+#base_dir = ""
 
 # Read in the tree:
 psi <- readTrees(base_dir + "data/onagraceae_final_map.tree")[1]
@@ -31,7 +31,7 @@ psi.dropTip("Peplis_portula")
 max_chromo <- 43
 
 # Get the observed chromosome counts from a tab-delimited file:
-chromo_data <- readCharacterDataDelimited(base_dir + "data/chromosome_counts2.csv", stateLabels=(max_chromo + 1), type="NaturalNumbers", delimiter=",", headers=FALSE)
+chromo_data <- readCharacterDataDelimited(base_dir + "data/chromosome_counts.csv", stateLabels=(max_chromo + 1), type="NaturalNumbers", delimiter=",", headers=FALSE)
 
 # Here we set the expected number of anagenetic events used for prior mean.
 #ana_events <- 10
