@@ -10,9 +10,10 @@ psi.dropTip("Lythrum_portula")
 psi.dropTip("Peplis_portula")
 
 # read in the sampled character histories
-anc_states = readAncestralStateTrace("output/combined-anc.log")
+anc_states = readAncestralStateTrace("output-good/combined-anc.log")
 
 # make summary tree
-characterMapTree(tree=psi, ancestral_state_trace_vector=anc_states, character_file="character.tree", posterior_file="posterior.tree", burnin=burnin, num_time_slices=n_time_slices)
+characterMapTree(tree=psi, ancestral_state_trace_vector=anc_states, character_file="output-good/marginal_character.tree", posterior_file="output-good/marginal_posterior.tree", burnin=burnin, num_time_slices=n_time_slices)
+characterMapTree(tree=psi, ancestral_state_trace_vector=anc_states, character_file="output-good/conditional_character.tree", posterior_file="output-good/conditional_posterior.tree", burnin=burnin, num_time_slices=n_time_slices, reconstruction="conditional")
 
 q()
