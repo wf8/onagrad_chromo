@@ -1,0 +1,15 @@
+
+# script to summarize the maximum a posteriori character history
+
+burnin=30
+n_time_slices = 500
+psi <- readTrees("data/onagraceae_final_map.tree")[1]
+
+# read in the sampled character histories
+anc_states = readAncestralStateTrace("output/stochastic_selfing.log")
+
+# make summary tree
+characterMapTree(tree=psi, ancestral_state_trace_vector=anc_states, character_file="output/marginal_character.tree", posterior_file="output/marginal_posterior.tree", burnin=burnin, num_time_slices=n_time_slices)
+characterMapTree(tree=psi, ancestral_state_trace_vector=anc_states, character_file="output/conditional_character.tree", posterior_file="output/conditional_posterior.tree", burnin=burnin, num_time_slices=n_time_slices, reconstruction="conditional")
+
+q()

@@ -1,0 +1,26 @@
+#!/usr/bin/rb
+
+base_dir = ""
+
+# read in data
+observed_phylogeny <- readTrees(base_dir + "data/onagraceae_final_map.tree")[1]
+data <- readCharacterDataDelimited(base_dir + "data/selfing_data.csv", stateLabels=1, type="NaturalNumbers", delimiter=",", headers=TRUE)
+
+taxa <- observed_phylogeny.taxa()
+for (i in 1:taxa.size()) {
+
+    found = false;
+    for (j in 1:data.names().size()) {
+
+        if (taxa[i].getSpeciesName() == data.names()[j].getSpeciesName()) {
+            found = true
+            break
+        }
+    }
+    if (!found) {
+        write(taxa[i].getSpeciesName(), filename="missing_taxa.txt", append=true)
+        write("\n", filename="missing_taxa.txt", append=true)
+    }
+}
+
+

@@ -1,0 +1,167 @@
+#!/usr/bin/rb
+
+base_dir = ""
+sample_freq = 1
+
+# read in data
+psi <- readTrees(base_dir + "data/onagraceae_final_map.tree")[1]
+data <- readCharacterDataDelimited(base_dir + "data/selfing_data_complete.csv", stateLabels=2, type="NaturalNumbers", delimiter=",", headers=TRUE)
+
+# add unobserved hidden state
+data_exp <- data.expandCharacters( 2 )
+
+
+# set my move index
+mvi = 1
+mni = 1
+
+
+# expected num species at time t under constant birth-death is
+# E(N_t) = N_0 e^{rt}
+# therefore net diversification r is
+# r = ( ln N_t - ln N_0 ) / t
+# we use r as the mean for the speciation prior
+taxa <- psi.taxa()
+speciation_mean <- ln( taxa.size() ) / psi.rootAge()
+speciation_pr <- 1 / speciation_mean
+
+
+#for (i in 1:4) {
+#
+#    speciation[i] ~ dnReversibleJumpMixture(constantValue=0.0, baseDistribution=dnExponential( speciation_pr ), p=0.5)
+#    speciation[i].setValue(0.1)
+#    turnover[i] ~ dnReversibleJumpMixture(constantValue=0.0, baseDistribution=dnUniform(0.0, 1.0), p=0.5)
+#    
+#    moves[mvi++] = mvRJSwitch(speciation[i], weight=2)
+#    moves[mvi++] = mvSlide(speciation[i], delta=1.0, weight=2.0)
+#    moves[mvi++] = mvScale(turnover[i], lambda=5.0, weight=2.0)
+#
+#}
+#
+#extinction := speciation * turnover
+
+base_speciation ~ dnExponential( speciation_pr )
+moves[mvi++] = mvSlide(base_speciation, delta = 1.0, weight=4)
+moves[mvi++] = mvSlide(base_speciation, delta = 0.1, weight=4)
+
+for (i in 1:4) {
+
+    if (i == 1) {
+        speciation_multiplier[i] <- 0.0
+    } else {
+        speciation_multiplier[i] ~ dnUniform(-3, 3)
+        speciation_multiplier[i].setValue(0.0)
+        moves[mvi++] = mvSlide(speciation_multiplier[i], delta=1.0, weight=2.0)
+    }
+    
+    turnover[i] ~ dnUniform(0, 2)
+    turnover[i].setValue(0.5)
+    moves[mvi++] = mvScale(turnover[i], lambda=2.0, weight=2.0)
+    moves[mvi++] = mvScale(turnover[i], lambda=0.1, weight=2.0)
+
+    speciation[i] := base_speciation * exp(speciation_multiplier[i])
+
+}
+
+extinction := speciation * turnover
+diversification := speciation - extinction
+
+# rate_matrix = [0A, 1A, 0B, 1B]
+divers_0 := diversification[1] + diversification[3]
+divers_1 := diversification[2] + diversification[4]
+divers_A := diversification[1] + diversification[2]
+divers_B := diversification[3] + diversification[4]
+
+# transition rates among states
+
+rate_pr := psi.treeLength() / 10
+
+# between observed states
+#rate_01 ~ dnExponential( rate_pr )
+rate_01 <- 0.0 # no secondary gain of incompatibility
+rate_10 ~ dnExponential( rate_pr )
+Q := [rate_01, rate_10]
+
+# between hidden states
+rate_AB ~ dnExponential( rate_pr )
+rate_BA ~ dnExponential( rate_pr )
+R := [rate_AB, rate_BA]
+
+# the rate matrix for the combined observed and hidden states 
+rate_matrix := fnHiddenStateRateMatrix(Q, R, rescaled=false)
+    
+#moves[mvi++] = mvSlide(rate_01, delta=1.0, weight=2.0)
+moves[mvi++] = mvSlide(rate_10, delta=1.0, weight=2.0)
+moves[mvi++] = mvSlide(rate_AB, delta=1.0, weight=2.0)
+moves[mvi++] = mvSlide(rate_BA, delta=1.0, weight=2.0)
+moves[mvi++] = mvSlide(rate_10, delta=0.1, weight=2.0)
+moves[mvi++] = mvSlide(rate_AB, delta=0.1, weight=2.0)
+moves[mvi++] = mvSlide(rate_BA, delta=0.1, weight=2.0)
+
+
+# root state frequencies 
+root_states <- simplex( [0,1,0,1] ) # condition on starting in either 1A or 1B
+#root_states ~ dnDirichlet( rep(1, 4) )
+#moves[mvi++] = mvBetaSimplex(root_states, weight=2)
+#moves[mvi++] = mvDirichletSimplex(root_states, weight=2)
+
+
+
+# rho is the probability of sampling species at the present
+rho <- psi.ntips()/1270
+
+# character dependent birth death process
+timetree ~ dnCDBDP( rootAge           = psi.rootAge(),
+                    speciationRates   = speciation,
+                    extinctionRates   = extinction, 
+                    Q                 = rate_matrix, 
+                    delta             = 1.0,
+                    pi                = root_states,
+                    rho               = rho,
+                    condition         = "survival",
+                    taxa              = taxa )
+
+#clamp the model with the observed tree and data
+timetree.clamp( psi )
+timetree.clampCharData( data_exp )
+
+
+
+
+#############
+# The Model #
+#############
+
+
+### workspace model wrapper ###
+mymodel = model(timetree)
+
+# monitors
+monitors[mni++] = mnScreen(printgen=sample_freq, speciation)
+monitors[mni++] = mnModel(filename=base_dir + "output/selfing.log", printgen=sample_freq)
+monitors[mni++] = mnJointConditionalAncestralState(tree=timetree, cdbdp=timetree, type="NaturalNumbers", printgen=sample_freq, withTips=true, withStartStates=false, filename=base_dir + "output/anc_selfing.log")
+monitors[mni++] = mnStochasticCharacterMap(cdbdp=timetree, printgen=sample_freq, filename=base_dir + "output/stochastic_selfing.log", include_simmap=true)
+
+
+################
+# The Analysis #
+################
+
+### workspace mcmc
+mymcmc = mcmc(mymodel, monitors, moves)
+
+### pre-burnin to tune the proposals
+#mymcmc.burnin(generations=1000,tuningInterval=100)
+
+### run the MCMC
+mymcmc.run(generations=2000)
+
+##############################
+# Summarize ancestral states #
+##############################
+
+#anc_states = readAncestralStateTrace("output/anc_states_mammals_CDBD_hidden_" + NUM_HIDDEN + "_hidden.log")
+#anc_tree = ancestralStateTree(tree=psi, ancestral_state_trace_vector=anc_states, include_start_states=false, file="output/anc_states_mammals_CDBD_hidden_"+NUM_HIDDEN+"_hidden_results.tree", burnin=200, summary_statistic="MAP", site=0)
+
+#q()
+
