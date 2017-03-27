@@ -188,7 +188,7 @@ chromotree.clampCharData(chromo_data)
 monitors[1] = mnScreen(printgen=sample_freq, gamma, gamma_l, delta, delta_l, rho, eta, clado_no_change, clado_fission, clado_fusion, clado_polyploid, clado_demipoly,turnover,total_speciation)
 monitors[2] = mnModel(filename=base_dir + "output/chromosse" + rep + ".log", printgen=sample_freq)
 monitors[3] = mnJointConditionalAncestralState(tree=psi, cdbdp=chromotree, type="NaturalNumbers", printgen=sample_freq, withTips=true, withStartStates=true, filename="output/chromosse-nodes-anc" + rep + ".log")
-monitors[4] = mnJointConditionalCharacterMapping(cdbdp=chromotree, printgen=sample_freq, filename=base_dir + "output/chromosse-anc" + rep + ".log", include_simmap=true)
+monitors[4] = mnStochasticCharacterMap(cdbdp=chromotree, printgen=sample_freq, filename=base_dir + "output/chromosse-anc" + rep + ".log", include_simmap=true)
 
 ### finish model
 mymodel = model(chromotree)
