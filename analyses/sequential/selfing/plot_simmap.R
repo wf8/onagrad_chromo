@@ -25,9 +25,10 @@ sim2 = read.simmap(file=character_file, format="phylip")
 #
 #cols = setNames( rainbow(length(colors), start=0.07, end=0.9), colors)
 #cols<-setNames(c("blue","red","green"),letters[1:3])
-cols = setNames(c("springgreen1", "slateblue1", "springgreen4", "slateblue4"), c(0,1,2,3))
+cols = setNames(c("springgreen1", "slateblue1", "springgreen3", "slateblue4"), c(0,1,2,3))
 
 plotSimmap(sim2, cols, fsize=0.124, lwd=1, split.vertical=TRUE)
+#plotSimmap(sim2, cols, fsize=0.0000001, lwd=2, split.vertical=TRUE, type="fan")
 
 add.simmap.legend(colors=cols,vertical=TRUE, shape="circle", prompt=prompt, x=3, y=200)
 
@@ -50,6 +51,7 @@ colors = 1:100
 cols = setNames( rainbow(length(colors), start=0.0, end=0.4), colors)
 
 plotSimmap(sim2, cols, fsize=0.124, lwd=1, split.vertical=TRUE)
+#plotSimmap(sim2, cols, fsize=0.0001, lwd=2, split.vertical=TRUE, type="fan")
 
 # add a legend to the posteriors plot
 leg = c("0.0", "0.25", "0.5", "0.75", "1.0")

@@ -3,7 +3,7 @@
 
 burnin=30
 n_time_slices = 500
-psi <- readTrees("data/onagraceae_final_map.tree")[1]
+psi <- readTrees("data/onagraceae_final_map_trimmed.tree")[1]
 
 # read in the sampled character histories
 anc_states = readAncestralStateTrace("output/stochastic_selfing.log")

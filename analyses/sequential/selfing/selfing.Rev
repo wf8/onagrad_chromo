@@ -4,11 +4,12 @@ base_dir = ""
 sample_freq = 1
 
 # read in data
-psi <- readTrees(base_dir + "data/onagraceae_final_map.tree")[1]
+psi <- readTrees(base_dir + "data/onagraceae_final_map_trimmed.tree")[1]
 data <- readCharacterDataDelimited(base_dir + "data/selfing_data_complete.csv", stateLabels=2, type="NaturalNumbers", delimiter=",", headers=TRUE)
 
 # add unobserved hidden state
 data_exp <- data.expandCharacters( 2 )
+#data_exp <- data
 
 
 # set my move index
@@ -22,7 +23,8 @@ mni = 1
 # r = ( ln N_t - ln N_0 ) / t
 # we use r as the mean for the speciation prior
 taxa <- psi.taxa()
-speciation_mean <- ln( taxa.size() ) / psi.rootAge()
+#speciation_mean <- ln( taxa.size() ) / psi.rootAge()
+speciation_mean <- ln( 650 ) / psi.rootAge()
 speciation_pr <- 1 / speciation_mean
 
 
@@ -49,7 +51,7 @@ for (i in 1:4) {
     if (i == 1) {
         speciation_multiplier[i] <- 0.0
     } else {
-        speciation_multiplier[i] ~ dnUniform(-3, 3)
+        speciation_multiplier[i] ~ dnUniform(-2, 2)
         speciation_multiplier[i].setValue(0.0)
         moves[mvi++] = mvSlide(speciation_multiplier[i], delta=1.0, weight=2.0)
     }
@@ -67,14 +69,16 @@ extinction := speciation * turnover
 diversification := speciation - extinction
 
 # rate_matrix = [0A, 1A, 0B, 1B]
-divers_0 := diversification[1] + diversification[3]
-divers_1 := diversification[2] + diversification[4]
-divers_A := diversification[1] + diversification[2]
-divers_B := diversification[3] + diversification[4]
+divers_0A := diversification[1]
+divers_1A := diversification[2]
+divers_0B := diversification[3]
+divers_1B := diversification[4]
 
 # transition rates among states
-
-rate_pr := psi.treeLength() / 10
+num_events ~ dnUniform(1, 100)
+moves[mvi++] = mvScale(num_events, lambda=20, weight=5)
+moves[mvi++] = mvScale(num_events, lambda=2, weight=5)
+rate_pr := psi.treeLength() / num_events
 
 # between observed states
 #rate_01 ~ dnExponential( rate_pr )
@@ -100,15 +104,15 @@ moves[mvi++] = mvSlide(rate_BA, delta=0.1, weight=2.0)
 
 
 # root state frequencies 
-root_states <- simplex( [0,1,0,1] ) # condition on starting in either 1A or 1B
-#root_states ~ dnDirichlet( rep(1, 4) )
-#moves[mvi++] = mvBetaSimplex(root_states, weight=2)
-#moves[mvi++] = mvDirichletSimplex(root_states, weight=2)
+#root_states <- simplex( [0,1,0,1] ) # condition on starting in either 1A or 1B
+root_states ~ dnDirichlet( rep(1, 4) )
+moves[mvi++] = mvBetaSimplex(root_states, weight=2)
+moves[mvi++] = mvDirichletSimplex(root_states, weight=2)
 
 
 
 # rho is the probability of sampling species at the present
-rho <- psi.ntips()/1270
+rho <- psi.ntips()/650
 
 # character dependent birth death process
 timetree ~ dnCDBDP( rootAge           = psi.rootAge(),
@@ -154,7 +158,7 @@ mymcmc = mcmc(mymodel, monitors, moves)
 #mymcmc.burnin(generations=1000,tuningInterval=100)
 
 ### run the MCMC
-mymcmc.run(generations=2000)
+mymcmc.run(generations=10000)
 
 ##############################
 # Summarize ancestral states #
