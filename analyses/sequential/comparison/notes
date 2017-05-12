@@ -1,0 +1,10 @@
+Total SC polyploidization events: 994848
+Total SI polyploidization events: 817019
+
+Welch Two Sample t-test
+p-value < 2.2e-16
+mean values: 83.02161  68.18151
+
+Paired t-test
+p-value < 2.2e-16
+mean of differences: 14.84011
