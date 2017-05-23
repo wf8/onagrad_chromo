@@ -44,7 +44,7 @@ chromo_data = raw_data.expandCharacters( 2 )
 rho_s <- 0.27
 
 # Set the total number of MCMC iterations to run:
-mcmc_iterations = 250
+mcmc_iterations = 2500
 
 # here we will exclude samples after combing multiple runs so set burnin:
 burnin = 0

@@ -6,10 +6,10 @@ import operator
 
 csv.field_size_limit(2147483647)
 
-burnin = 50 # per trace
+burnin = 0 # per trace
 #burnin = 50 # per trace
 sample_freq = 1 # number of iterations per sample
-n_runs = 24 # number of MCMC runs to combine
+n_runs = 80 # number of MCMC runs to combine
 
 print("Combining parameter traces...")
 
@@ -38,7 +38,7 @@ for log in range(1, n_runs + 1):
                     final_csv.append(final_row)
 
 with open("output/combined.log", "w") as csvfile:
-    csvwriter = csv.writer(csvfile, delimiter="\t")
+    csvwriter = csv.writer(csvfile, delimiter="\t", lineterminator="\n")
     for row in final_csv:
         csvwriter.writerow(row)
 
@@ -69,7 +69,7 @@ for log in range(1, n_runs + 1):
                     final_csv.append(final_row)
 
 with open("output/combined-anc.log", "w") as csvfile:
-    csvwriter = csv.writer(csvfile, delimiter="\t")
+    csvwriter = csv.writer(csvfile, delimiter="\t", lineterminator="\n")
     for row in final_csv:
         csvwriter.writerow(row)
 

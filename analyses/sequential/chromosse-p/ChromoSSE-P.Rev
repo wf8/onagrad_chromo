@@ -105,7 +105,6 @@ for (i in 1:2) {
     clado_fusion[i] ~ dnReversibleJumpMixture(constantValue=0.0, baseDistribution=dnExponential( speciation_pr * (1/clado_change_ratio) ), p=0.5)
     clado_polyploid[i] ~ dnReversibleJumpMixture(constantValue=0.0, baseDistribution=dnExponential( speciation_pr * (1/clado_change_ratio) ), p=0.5)
     clado_demipoly[i] ~ dnReversibleJumpMixture(constantValue=0.0, baseDistribution=dnExponential( speciation_pr * (1/clado_change_ratio) ), p=0.5)
-    clado_demipoly[i] <- 0.0
 
     clado_no_change[i].setValue(speciation_mean)
     clado_fission[i].setValue(0.01)
@@ -179,8 +178,8 @@ chromotree.clampCharData(chromo_data)
 ### set up the monitors that will output parameter values to file and screen
 monitors[1] = mnScreen(printgen=sample_freq, speciation_diploid, speciation_polyploid, extinction_diploid, extinction_polyploid, diversification_diploid, diversification_polyploid)
 monitors[2] = mnModel(filename=base_dir + "output/chromosse" + rep + ".log", printgen=sample_freq)
-monitors[3] = mnJointConditionalAncestralState(tree=psi, cdbdp=chromotree, type="NaturalNumbers", printgen=sample_freq, withTips=true, withStartStates=true, filename="output/chromosse-nodes-anc" + rep + ".log")
-monitors[4] = mnStochasticCharacterMap(cdbdp=chromotree, printgen=sample_freq, filename=base_dir + "output/chromosse-anc" + rep + ".log", include_simmap=true)
+#monitors[3] = mnJointConditionalAncestralState(tree=psi, cdbdp=chromotree, type="NaturalNumbers", printgen=sample_freq, withTips=true, withStartStates=true, filename="output/chromosse-nodes-anc" + rep + ".log")
+monitors[3] = mnStochasticCharacterMap(cdbdp=chromotree, printgen=sample_freq, filename=base_dir + "output/chromosse-anc" + rep + ".log", include_simmap=true)
 
 ### finish model
 mymodel = model(chromotree)
