@@ -1,0 +1,200 @@
+
+#
+# ChromoSSE: Cladogenetic and Anagenetic Phylogenetic Models of Chromosome Number Evolution
+# 
+# Will Freyman, UC Berkeley
+# freyman@berkeley.edu
+# http://willfreyman.org
+#
+#
+# This script specifies the ChromoSSE model and MCMC analysis.
+#
+
+
+# set an index for the MCMC moves
+mi = 1
+
+
+####### Chromosome Model
+
+
+# anagenetic rates
+
+t_len <- psi.treeLength()
+rate_pr := t_len / 2
+
+# separate rates for diploid and polyploid lineages
+for (i in 1:2) {
+
+    # anagenetic rate of chromosome gains
+    gamma[i] ~ dnReversibleJumpMixture(constantValue=0.0, baseDistribution=dnExponential(rate_pr), p=0.5)
+
+    # anagenetic rate of chromosome losses
+    delta[i] ~ dnReversibleJumpMixture(constantValue=0.0, baseDistribution=dnExponential(rate_pr), p=0.5)
+
+    # anagenetic rate of polyploidization
+    rho[i] ~ dnReversibleJumpMixture(constantValue=0.0, baseDistribution=dnExponential(rate_pr), p=0.5)
+
+    # anagenetic rate of demi-polyploidization
+    eta[i] ~ dnReversibleJumpMixture(constantValue=0.0, baseDistribution=dnExponential(rate_pr), p=0.5)
+
+    # linear component of rate of gain based on current number of chromosomes
+    #gamma_l[i] ~ dnReversibleJumpMixture(constantValue=0.0, baseDistribution=dnUniform(-3/max_chromo, 3/max_chromo), p=0.5)
+    #gamma_l[i].setValue(0.0)
+    gamma_l[i] <- 0.0
+
+    # linear component of rate of losss based on current number of chromosomes
+    #delta_l[i] ~ dnReversibleJumpMixture(constantValue=0.0, baseDistribution=dnUniform(-3/max_chromo, 3/max_chromo), p=0.5)
+    #delta_l[i].setValue(0.0)
+    delta_l[i] <- 0.0
+
+    # Add moves for each of the rates.
+    moves[mi++] = mvScale(gamma[i], lambda=1.0, weight=2)
+    moves[mi++] = mvScale(delta[i], lambda=1.0, weight=2)
+    moves[mi++] = mvScale(rho[i], lambda=1.0, weight=2)
+    moves[mi++] = mvScale(eta[i], lambda=1.0, weight=2)
+
+    #moves[mi++] = mvSlide(gamma_l[i], delta=0.1, weight=1)
+    #moves[mi++] = mvSlide(delta_l[i], delta=0.1, weight=1)
+    #moves[mi++] = mvSlide(gamma_l[i], delta=0.001, weight=1)
+    #moves[mi++] = mvSlide(delta_l[i], delta=0.001, weight=1)
+
+    moves[mi++] = mvRJSwitch(gamma[i], weight=2)
+    moves[mi++] = mvRJSwitch(delta[i], weight=2)
+    moves[mi++] = mvRJSwitch(rho[i], weight=2)
+    moves[mi++] = mvRJSwitch(eta[i], weight=2)
+    #moves[mi++] = mvRJSwitch(gamma_l[i], weight=2)
+    #moves[mi++] = mvRJSwitch(delta_l[i], weight=2)
+
+}
+rediploidization ~ dnReversibleJumpMixture(constantValue=0.0, baseDistribution=dnExponential(rate_pr), p=0.5)
+moves[mi++] = mvScale(rediploidization, lambda=1.0, weight=2)
+moves[mi++] = mvRJSwitch(rediploidization, weight=2)
+
+# Create the rate matrix for chromosome number transitions.
+R := fnChromosomesPloidy(max_chromo, gamma[1], delta[1], rho[1], eta[1], gamma_l[1], delta_l[1], gamma[2], delta[2], rho[2], eta[2], gamma_l[2], delta_l[2], rediploidization)
+
+root_frequencies_prior <- rep(1, 2 * (max_chromo + 1))
+root_frequencies ~ dnDirichlet(root_frequencies_prior)
+moves[mi++] = mvBetaSimplex(root_frequencies, alpha=0.5, weight=10)
+moves[mi++] = mvElementSwapSimplex(root_frequencies, weight=10)
+
+# speciation rates for each cladogenetic event type
+
+# expected num species at time t under constant birth-death is
+# E(N_t) = N_0 e^{rt}
+# therefore net diversification r is
+# r = ( ln N_t - ln N_0 ) / t
+# we use r as the mean for the speciation prior
+taxa <- psi.taxa()
+speciation_mean <- ln( taxa.size() ) / psi.rootAge()
+speciation_pr <- 1 / speciation_mean
+
+# ~1270 total species in lythraceae/onagraceae
+# calculate ratio of 2 expected clado changes over the tree
+num_speciation_events <- 1270 - 1
+clado_change_ratio <- 2/num_speciation_events
+
+# separate rates for diploid and polyploid lineages
+for (i in 1:2) {
+
+    clado_no_change[i] ~ dnExponential(speciation_pr)
+    mu[i] ~ dnExponential(speciation_pr)
+
+    clado_fission[i] ~ dnReversibleJumpMixture(constantValue=0.0, baseDistribution=dnExponential( speciation_pr * (1/clado_change_ratio) ), p=0.5)
+    clado_fusion[i] ~ dnReversibleJumpMixture(constantValue=0.0, baseDistribution=dnExponential( speciation_pr * (1/clado_change_ratio) ), p=0.5)
+    clado_polyploid[i] ~ dnReversibleJumpMixture(constantValue=0.0, baseDistribution=dnExponential( speciation_pr * (1/clado_change_ratio) ), p=0.5)
+    clado_demipoly[i] ~ dnReversibleJumpMixture(constantValue=0.0, baseDistribution=dnExponential( speciation_pr * (1/clado_change_ratio) ), p=0.5)
+    clado_demipoly[i] <- 0.0
+
+    clado_no_change[i].setValue(speciation_mean)
+    clado_fission[i].setValue(0.01)
+    clado_fusion[i].setValue(0.01)
+    clado_polyploid[i].setValue(0.01)
+    clado_demipoly[i].setValue(0.01)
+
+    # MCMC moves for speciation rates
+    moves[mi++] = mvScale(clado_no_change[i], lambda=5.0, weight=2)
+    moves[mi++] = mvScale(clado_fission[i], lambda=5.0, weight=2)
+    moves[mi++] = mvScale(clado_fusion[i], lambda=5.0, weight=2)
+    moves[mi++] = mvScale(clado_polyploid[i], lambda=5.0, weight=2)
+    moves[mi++] = mvScale(clado_demipoly[i], lambda=5.0, weight=2)
+    moves[mi++] = mvScale(mu[i], lambda=5.0, weight=2)
+
+    #up_down_scale_mv[i] = mvUpDownScale(lambda=0.5, weight=2)
+    #up_down_scale_mv[i].addVariable( clado_no_change[i], TRUE )
+    #up_down_scale_mv[i].addVariable( clado_fission[i], FALSE )
+    #up_down_scale_mv[i].addVariable( clado_fusion[i], FALSE )
+    #up_down_scale_mv[i].addVariable( clado_polyploid[i], FALSE )
+    #up_down_scale_mv[i].addVariable( clado_demipoly[i], FALSE )
+    #moves[mi++] = up_down_scale_mv[i]
+
+    moves[mi++] = mvRJSwitch(clado_fission[i], weight=2)
+    moves[mi++] = mvRJSwitch(clado_fusion[i], weight=2)
+    moves[mi++] = mvRJSwitch(clado_polyploid[i], weight=2)
+    moves[mi++] = mvRJSwitch(clado_demipoly[i], weight=2)
+
+}
+speciation_diploid := sum([clado_no_change[1], clado_fission[1], clado_fusion[1], clado_polyploid[1], clado_demipoly[1]])
+speciation_polyploid := sum([clado_no_change[2], clado_fission[2], clado_fusion[2], clado_polyploid[2], clado_demipoly[2]])
+
+speciation_rates := [clado_no_change[1], clado_fission[1], clado_fusion[1], clado_polyploid[1], clado_demipoly[1],
+                     clado_no_change[2], clado_fission[2], clado_fusion[2], clado_polyploid[2], clado_demipoly[2]]
+
+# map the speciation rates to chromosome cladogenetic events
+clado_matrix := fnChromosomesPloidyCladoEventsBD(speciation_rates, max_chromo)
+
+extinction_diploid := mu[1]
+extinction_polyploid := mu[2]
+diversification_diploid := speciation_diploid - extinction_diploid
+diversification_polyploid := speciation_polyploid - extinction_polyploid
+
+# make a vector of extinction rates for each state
+for (i in 1:(max_chromo + 1)) {
+    extinction[i] := extinction_diploid
+}
+for (i in (max_chromo + 2):(2 * (max_chromo + 1))) {
+    extinction[i] := extinction_polyploid
+}
+
+# construct a variable for the tree and chromosomes drawn from a 
+# cladogenetic character state dependent birth death process
+chromotree ~ dnCDCladoBDP( rootAge            = psi.rootAge(),
+                    cladoEventMap             = clado_matrix,
+                    extinctionRates           = extinction, 
+                    Q                         = R,
+                    delta                     = 1.0,
+                    pi                        = root_frequencies,
+                    rho                       = rho_s,
+                    condition                 = "time",
+                    taxa                      = taxa,
+                    nTimeSlices               = n_time_slices )
+
+
+# and clamp tree and the chromosome counts data
+chromotree.clamp(psi)
+chromotree.clampCharData(chromo_data)
+
+
+### set up the monitors that will output parameter values to file and screen
+monitors[1] = mnScreen(printgen=sample_freq, speciation_diploid, speciation_polyploid, extinction_diploid, extinction_polyploid, diversification_diploid, diversification_polyploid)
+monitors[2] = mnModel(filename=base_dir + "output/chromosse" + rep + ".log", printgen=sample_freq)
+monitors[3] = mnJointConditionalAncestralState(tree=psi, cdbdp=chromotree, type="NaturalNumbers", printgen=sample_freq, withTips=true, withStartStates=true, filename="output/chromosse-nodes-anc" + rep + ".log")
+monitors[4] = mnStochasticCharacterMap(cdbdp=chromotree, printgen=sample_freq, filename=base_dir + "output/chromosse-anc" + rep + ".log", include_simmap=true)
+
+### finish model
+mymodel = model(chromotree)
+
+### workspace MCMC object ###
+mymcmc = mcmc(mymodel, monitors, moves)
+
+### run the MCMC ###
+mymcmc.run(generations=mcmc_iterations)
+
+### summarize ancestral states ###
+#anc_states = readAncestralStateTrace("output/chromosse-anc.log")
+
+# make summary tree
+#ancestralStateTree(psi, anc_states, include_start_states=true, "output/ancestral_states_results.tree", burnin)
+
+q()

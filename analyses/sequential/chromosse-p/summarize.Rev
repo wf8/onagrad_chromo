@@ -1,0 +1,21 @@
+
+# script to summarize the maximum a posteriori character history
+
+burnin=0
+n_time_slices = 500
+psi <- readTrees("data/onagraceae_final_map.tree")[1]
+
+psi.dropTip("Lythrum_junceum")
+psi.dropTip("Lythrum_portula")
+psi.dropTip("Peplis_portula")
+
+# read in the sampled character histories
+anc_states = readAncestralStateTrace("output-best-1270-clado-prior/combined-anc.log")
+
+summarizeCharacterMaps(psi, anc_states, file="summary.tsv", burnin=burnin)
+
+# make summary tree
+#characterMapTree(tree=psi, ancestral_state_trace_vector=anc_states, character_file="output/marginal_character.tree", posterior_file="output/marginal_posterior.tree", burnin=burnin, num_time_slices=n_time_slices)
+#characterMapTree(tree=psi, ancestral_state_trace_vector=anc_states, character_file="output/conditional_character.tree", posterior_file="output/conditional_posterior.tree", burnin=burnin, num_time_slices=n_time_slices, reconstruction="conditional")
+
+q()

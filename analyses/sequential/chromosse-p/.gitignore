@@ -1,0 +1,6 @@
+runs/
+history.txt
+misc/
+output/
+temp_output/
+*.out
