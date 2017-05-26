@@ -67,9 +67,10 @@ for (i in 1:2) {
     #moves[mi++] = mvRJSwitch(delta_l[i], weight=2)
 
 }
-rediploidization ~ dnReversibleJumpMixture(constantValue=0.0, baseDistribution=dnExponential(rate_pr), p=0.5)
-moves[mi++] = mvScale(rediploidization, lambda=1.0, weight=2)
-moves[mi++] = mvRJSwitch(rediploidization, weight=2)
+#rediploidization ~ dnReversibleJumpMixture(constantValue=0.0, baseDistribution=dnExponential(rate_pr), p=0.5)
+#moves[mi++] = mvScale(rediploidization, lambda=1.0, weight=2)
+#moves[mi++] = mvRJSwitch(rediploidization, weight=2)
+rediploidization <- 0.0
 
 # Create the rate matrix for chromosome number transitions.
 R := fnChromosomesPloidy(max_chromo, gamma[1], delta[1], rho[1], eta[1], gamma_l[1], delta_l[1], gamma[2], delta[2], rho[2], eta[2], gamma_l[2], delta_l[2], rediploidization)
