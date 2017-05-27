@@ -75,10 +75,31 @@ rediploidization <- 0.0
 # Create the rate matrix for chromosome number transitions.
 R := fnChromosomesPloidy(max_chromo, gamma[1], delta[1], rho[1], eta[1], gamma_l[1], delta_l[1], gamma[2], delta[2], rho[2], eta[2], gamma_l[2], delta_l[2], rediploidization)
 
-root_frequencies_prior <- rep(1, 2 * (max_chromo + 1))
-root_frequencies ~ dnDirichlet(root_frequencies_prior)
-moves[mi++] = mvBetaSimplex(root_frequencies, alpha=0.5, weight=10)
-moves[mi++] = mvElementSwapSimplex(root_frequencies, weight=10)
+#root_frequencies_prior <- rep(1, 2 * (max_chromo + 1))
+# condition on root state being diploid
+#for (i in 1:(max_chromo + 1)) {
+#    root_frequencies_prior[i] <- 1.0
+#}
+#for (i in (max_chromo + 2):(2 * (max_chromo + 1))) {
+#    root_frequencies_prior[i] <- 0.0
+#    #root_frequencies_prior[i] <- 1e-2
+#}
+#
+#root_frequencies ~ dnDirichlet(root_frequencies_prior)
+#moves[mi++] = mvBetaSimplex(root_frequencies, alpha=0.5, weight=10)
+#moves[mi++] = mvElementSwapSimplex(root_frequencies, weight=10)
+for (i in 1:(2*(max_chromo + 1))) {
+    if (i == 9) {
+        root_frequencies_prior[i] = 0.90
+    } else if (i == 6) {
+        root_frequencies_prior[i] = 0.07
+    } else if (i == 8) {
+        root_frequencies_prior[i] = 0.03
+    } else {
+        root_frequencies_prior[i] = 0.0
+    }
+}
+root_frequencies <- simplex(root_frequencies_prior)
 
 # speciation rates for each cladogenetic event type
 
@@ -88,12 +109,12 @@ moves[mi++] = mvElementSwapSimplex(root_frequencies, weight=10)
 # r = ( ln N_t - ln N_0 ) / t
 # we use r as the mean for the speciation prior
 taxa <- psi.taxa()
-speciation_mean <- ln( taxa.size() ) / psi.rootAge()
+speciation_mean <- ln( psi.ntips() ) / psi.rootAge()
 speciation_pr <- 1 / speciation_mean
 
 # ~1270 total species in lythraceae/onagraceae
 # calculate ratio of 2 expected clado changes over the tree
-num_speciation_events <- 1270 - 1
+num_speciation_events <- 650 - 1
 clado_change_ratio <- 2/num_speciation_events
 
 # separate rates for diploid and polyploid lineages
@@ -121,13 +142,10 @@ for (i in 1:2) {
     moves[mi++] = mvScale(clado_demipoly[i], lambda=5.0, weight=2)
     moves[mi++] = mvScale(mu[i], lambda=5.0, weight=2)
 
-    #up_down_scale_mv[i] = mvUpDownScale(lambda=0.5, weight=2)
-    #up_down_scale_mv[i].addVariable( clado_no_change[i], TRUE )
-    #up_down_scale_mv[i].addVariable( clado_fission[i], FALSE )
-    #up_down_scale_mv[i].addVariable( clado_fusion[i], FALSE )
-    #up_down_scale_mv[i].addVariable( clado_polyploid[i], FALSE )
-    #up_down_scale_mv[i].addVariable( clado_demipoly[i], FALSE )
-    #moves[mi++] = up_down_scale_mv[i]
+    up_down_scale_mv[i] = mvUpDownScale(lambda=0.5, weight=5)
+    up_down_scale_mv[i].addVariable( clado_no_change[i], TRUE )
+    up_down_scale_mv[i].addVariable( mu[i], TRUE )
+    moves[mi++] = up_down_scale_mv[i]
 
     moves[mi++] = mvRJSwitch(clado_fission[i], weight=2)
     moves[mi++] = mvRJSwitch(clado_fusion[i], weight=2)
