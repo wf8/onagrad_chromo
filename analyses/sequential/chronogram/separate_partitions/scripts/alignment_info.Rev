@@ -1,0 +1,35 @@
+
+
+# generate latex table summarizing sequence alignments
+out = "data.tex"
+
+# read in data
+base_dir = "alignments/"
+
+filenames = v("ITS", 
+              "matK",
+              "ndhF",
+              "pgiC",
+              "rbcL",
+              "rpl16",
+              "rps16",
+              "trnL")
+
+n_partitions = filenames.size()
+header = "DNA Region & \\# of Taxa & Aligned Length & \\# Variable Sites & Missing data (\\%) & Taxon Coverage Density \\\\ \n"
+write(header, filename=out, append=false)
+
+for (i in 1:n_partitions) {
+    data[i] = readDiscreteCharacterData(base_dir + filenames[i] + ".fasta")
+
+    info = filenames[i] + " & "
+    info += data[i].numTaxaMissingSequence(1.0) + " & "
+    info += data[i].nchar() + " & "
+    info += (data[i].nchar() - data[i].getNumInvariantSites(true)) + " & "
+    missing = round((340 - data[i].numTaxaMissingSequence(1.0))*1000/340)/10
+    info += missing + " & "
+    info += (100 - missing)/100 + " \\\\ \n"
+    write(info, filename=out, append=true)
+}
+q()
+
