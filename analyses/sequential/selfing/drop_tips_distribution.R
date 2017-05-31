@@ -13,14 +13,14 @@ to_drop = c("Rotala_ramosior", "Rotala_rotundifolia", "Rotala_indica", "Heimia_s
            "Trapa_natans", "Trapa_maximowiczii", "Sonneratia_caseolaris", "Sonneratia_alba", "Sonneratia_ovata", "Sonneratia_apetala", "Ammannia_coccinea",
            "Lawsonia_inermis", "Ammannia_baccifera", "Ammannia_latifolia", "Nesaea_aspera", "Ammannia_prieuriana", "Ammannia_robusta")
 
-a = TRUE
+a = FALSE
 
-for (i in 1:3) {
+for (i in 1:length(t$timetree)) {
 
     tree = read.tree(text=t$timetree[i])
     tree = drop.tip(tree, to_drop, rooted=TRUE)
     write.tree(tree, "data/combined_trimmed.trees", append=a)
-    a = FALSE
+    a = TRUE
 
 }
 
