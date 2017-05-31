@@ -20,7 +20,7 @@ n_time_slices = 500
 #base_dir = ""
 
 # Read in the tree:
-psi <- readTrees(base_dir + "data/onagraceae_final_map.tree")[1]
+psi <- readTrees(base_dir + "data/onagraceae_final_map_trimmed.tree")[1]
 
 #psi.dropTip("Lythrum_junceum")
 #psi.dropTip("Lythrum_portula")
@@ -34,6 +34,7 @@ max_chromo <- 43
 # Get the observed chromosome counts from a tab-delimited file:
 raw_data = readCharacterDataDelimited(base_dir + "data/chromosome_counts.csv", stateLabels=(max_chromo + 1), type="NaturalNumbers", delimiter=",", headers=FALSE)
 chromo_data = raw_data.expandCharacters( 2 )
+#chromo_data = readCharacterDataDelimited(base_dir + "data/chromosome_counts_p.csv", stateLabels=2*(max_chromo + 1), type="NaturalNumbers", delimiter=",", headers=FALSE)
 
 # Here we set the expected number of anagenetic events used for prior mean.
 #ana_events <- 10
@@ -41,7 +42,8 @@ chromo_data = raw_data.expandCharacters( 2 )
 # the probability of sampling species at the present:
 # the number of species in Onagraceae is ~650 and Lythraceae ~620
 # we have 340 tips in our sample. so rho = 340/1270 ~ 0.27
-rho_s <- 0.27
+#rho_s <- 0.27
+rho_s <- Probability(psi.ntips()/650)
 
 # Set the total number of MCMC iterations to run:
 mcmc_iterations = 2500
