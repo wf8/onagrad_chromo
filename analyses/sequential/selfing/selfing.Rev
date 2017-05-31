@@ -2,19 +2,33 @@
 
 base_dir = ""
 sample_freq = 1
+fixed_tree = FALSE
+num_tree_samples = 500
+
+# set my move index
+mvi = 1
+mni = 1
 
 # read in data
-psi <- readTrees(base_dir + "data/onagraceae_final_map_trimmed.tree")[1]
+if (fixed_tree) {
+   
+    # use only the MAP tree
+    psi <- readTrees(base_dir + "data/onagraceae_final_map_trimmed.tree")[1]
+
+} else {
+
+    # use the posterior distribution of trees
+    trees <- readTrees(base_dir + "data/combined_trimmed.trees")
+        
+    # read in the MAP tree to summarize ancestral states on
+    psi <- readTrees(base_dir + "data/onagraceae_final_map_trimmed.tree")[1]
+
+}
 data <- readCharacterDataDelimited(base_dir + "data/selfing_data_complete.csv", stateLabels=2, type="NaturalNumbers", delimiter=",", headers=TRUE)
 
 # add unobserved hidden state
 data_exp <- data.expandCharacters( 2 )
 #data_exp <- data
-
-
-# set my move index
-mvi = 1
-mni = 1
 
 
 # expected num species at time t under constant birth-death is
@@ -115,22 +129,57 @@ moves[mvi++] = mvDirichletSimplex(root_states, weight=2)
 rho <- psi.ntips()/650
 
 # character dependent birth death process
-timetree ~ dnCDBDP( rootAge           = psi.rootAge(),
-                    speciationRates   = speciation,
-                    extinctionRates   = extinction, 
-                    Q                 = rate_matrix, 
-                    delta             = 1.0,
-                    pi                = root_states,
-                    rho               = rho,
-                    condition         = "survival",
-                    taxa              = taxa )
+if (fixed_tree) {
 
-#clamp the model with the observed tree and data
-timetree.clamp( psi )
-timetree.clampCharData( data_exp )
+    timetree ~ dnCDBDP( rootAge           = psi.rootAge(),
+                        speciationRates   = speciation,
+                        extinctionRates   = extinction, 
+                        Q                 = rate_matrix, 
+                        delta             = 1.0,
+                        pi                = root_states,
+                        rho               = rho,
+                        condition         = "survival",
+                        taxa              = taxa )
 
+    #clamp the model with the observed tree and data
+    timetree.clamp( psi )
+    timetree.clampCharData( data_exp )
 
+} else {
+    
+    timetree[1] ~ dnCDBDP( rootAge        = psi.rootAge(),
+                        speciationRates   = speciation,
+                        extinctionRates   = extinction, 
+                        Q                 = rate_matrix, 
+                        delta             = 1.0,
+                        pi                = root_states,
+                        rho               = rho,
+                        condition         = "survival",
+                        taxa              = taxa )
 
+    #clamp the model with the observed tree and data
+    timetree[1].clamp( psi )
+    timetree[1].clampCharData( data_exp )
+    
+    for (i in 1:num_tree_samples) {
+
+        j ~ dnUniformInteger(1, trees.size())
+        timetree[i + 1] ~ dnCDBDP( rootAge    = trees[j].rootAge(),
+                            speciationRates   = speciation,
+                            extinctionRates   = extinction, 
+                            Q                 = rate_matrix, 
+                            delta             = 1.0,
+                            pi                = root_states,
+                            rho               = rho,
+                            condition         = "survival",
+                            taxa              = taxa )
+
+        #clamp the model with the observed tree and data
+        timetree[i + 1].clamp( trees[j] )
+        timetree[i + 1].clampCharData( data_exp )
+
+    }
+}
 
 #############
 # The Model #
@@ -143,9 +192,12 @@ mymodel = model(timetree)
 # monitors
 monitors[mni++] = mnScreen(printgen=sample_freq, speciation)
 monitors[mni++] = mnModel(filename=base_dir + "output/selfing.log", printgen=sample_freq)
-monitors[mni++] = mnJointConditionalAncestralState(tree=timetree, cdbdp=timetree, type="NaturalNumbers", printgen=sample_freq, withTips=true, withStartStates=false, filename=base_dir + "output/anc_selfing.log")
-monitors[mni++] = mnStochasticCharacterMap(cdbdp=timetree, printgen=sample_freq, filename=base_dir + "output/stochastic_selfing.log", include_simmap=true)
-
+#monitors[mni++] = mnJointConditionalAncestralState(tree=timetree, cdbdp=timetree, type="NaturalNumbers", printgen=sample_freq, withTips=true, withStartStates=false, filename=base_dir + "output/anc_selfing.log")
+if (fixed_tree) {
+    monitors[mni++] = mnStochasticCharacterMap(cdbdp=timetree, printgen=sample_freq, filename=base_dir + "output/stochastic_selfing.log", include_simmap=true)
+} else {
+    monitors[mni++] = mnStochasticCharacterMap(cdbdp=timetree[1], printgen=sample_freq, filename=base_dir + "output/stochastic_selfing.log", include_simmap=true)
+}
 
 ################
 # The Analysis #
