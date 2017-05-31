@@ -1,9 +1,9 @@
 #!/usr/bin/rb
 
-base_dir = ""
+#base_dir = ""
 sample_freq = 1
 fixed_tree = FALSE
-num_tree_samples = 500
+num_tree_samples = 50
 
 # set my move index
 mvi = 1
@@ -191,12 +191,12 @@ mymodel = model(timetree)
 
 # monitors
 monitors[mni++] = mnScreen(printgen=sample_freq, speciation)
-monitors[mni++] = mnModel(filename=base_dir + "output/selfing.log", printgen=sample_freq)
+monitors[mni++] = mnModel(filename=base_dir + "output/selfing" + rep + ".log", printgen=sample_freq)
 #monitors[mni++] = mnJointConditionalAncestralState(tree=timetree, cdbdp=timetree, type="NaturalNumbers", printgen=sample_freq, withTips=true, withStartStates=false, filename=base_dir + "output/anc_selfing.log")
 if (fixed_tree) {
-    monitors[mni++] = mnStochasticCharacterMap(cdbdp=timetree, printgen=sample_freq, filename=base_dir + "output/stochastic_selfing.log", include_simmap=true)
+    monitors[mni++] = mnStochasticCharacterMap(cdbdp=timetree, printgen=sample_freq, filename=base_dir + "output/stochastic_selfing" + rep + ".log", include_simmap=true)
 } else {
-    monitors[mni++] = mnStochasticCharacterMap(cdbdp=timetree[1], printgen=sample_freq, filename=base_dir + "output/stochastic_selfing.log", include_simmap=true)
+    monitors[mni++] = mnStochasticCharacterMap(cdbdp=timetree[1], printgen=sample_freq, filename=base_dir + "output/stochastic_selfing" + rep + ".log", include_simmap=true)
 }
 
 ################
@@ -210,14 +210,7 @@ mymcmc = mcmc(mymodel, monitors, moves)
 #mymcmc.burnin(generations=1000,tuningInterval=100)
 
 ### run the MCMC
-mymcmc.run(generations=10000)
+mymcmc.run(generations=500)
 
-##############################
-# Summarize ancestral states #
-##############################
-
-#anc_states = readAncestralStateTrace("output/anc_states_mammals_CDBD_hidden_" + NUM_HIDDEN + "_hidden.log")
-#anc_tree = ancestralStateTree(tree=psi, ancestral_state_trace_vector=anc_states, include_start_states=false, file="output/anc_states_mammals_CDBD_hidden_"+NUM_HIDDEN+"_hidden_results.tree", burnin=200, summary_statistic="MAP", site=0)
-
-#q()
+q()
 

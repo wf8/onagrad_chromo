@@ -1,1 +1,12 @@
-imulator uses 23 different moves in a random move schedule with 56 moves per iteration
+
+# mcmc
+
+simulator uses 23 different moves in a random move schedule with 56 moves per iteration
+
+# runs
+
+20 independent runs, each 500 iterations long (500 samples) for a total of
+10000 samples.
+
+each independent run sampled 50 trees from posterior, for a total of 1000 trees
+out of the 3000 tree samples in the posterior
