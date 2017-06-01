@@ -1,12 +1,12 @@
 
 # mcmc
 
-simulator uses 23 different moves in a random move schedule with 56 moves per iteration
+The simulator uses 34 different moves in a random move schedule with 152 moves per iteration
 
 # runs
 
-20 independent runs, each 500 iterations long (500 samples) for a total of
-10000 samples.
+20 independent runs, each 500 iterations long (500 samples) for a total of 10000 samples.
+The first 10% discarded as burnin.
 
-each independent run sampled 50 trees from posterior, for a total of 1000 trees
+each independent run sampled 100 trees from posterior, for a total of 2000 trees
 out of the 3000 tree samples in the posterior

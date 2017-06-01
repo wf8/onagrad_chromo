@@ -3,7 +3,7 @@
 #base_dir = ""
 sample_freq = 1
 fixed_tree = FALSE
-num_tree_samples = 50
+num_tree_samples = 100
 
 # set my move index
 mvi = 1
@@ -28,7 +28,6 @@ data <- readCharacterDataDelimited(base_dir + "data/selfing_data_complete.csv", 
 
 # add unobserved hidden state
 data_exp <- data.expandCharacters( 2 )
-#data_exp <- data
 
 
 # expected num species at time t under constant birth-death is
@@ -41,45 +40,58 @@ taxa <- psi.taxa()
 speciation_mean <- ln( 650 ) / psi.rootAge()
 speciation_pr <- 1 / speciation_mean
 
-
+#base_speciation ~ dnExponential( speciation_pr )
+#moves[mvi++] = mvSlide(base_speciation, delta=5.0, weight=4)
+#moves[mvi++] = mvSlide(base_speciation, delta=1.0, weight=4)
+#moves[mvi++] = mvSlide(base_speciation, delta=0.1, weight=4)
+#
+#
 #for (i in 1:4) {
 #
-#    speciation[i] ~ dnReversibleJumpMixture(constantValue=0.0, baseDistribution=dnExponential( speciation_pr ), p=0.5)
-#    speciation[i].setValue(0.1)
-#    turnover[i] ~ dnReversibleJumpMixture(constantValue=0.0, baseDistribution=dnUniform(0.0, 1.0), p=0.5)
+#    if (i == 1) {
+#        speciation_multiplier[i] <- 0.0
+#    } else {
+#        speciation_multiplier[i] ~ dnUniform(-2, 2)
+#        speciation_multiplier[i].setValue(0.0)
+#        moves[mvi++] = mvSlide(speciation_multiplier[i], delta=10.0, weight=4.0)
+#        moves[mvi++] = mvSlide(speciation_multiplier[i], delta=1.0, weight=4.0)
+#        moves[mvi++] = mvSlide(speciation_multiplier[i], delta=0.1, weight=4.0)
+#    }
 #    
-#    moves[mvi++] = mvRJSwitch(speciation[i], weight=2)
-#    moves[mvi++] = mvSlide(speciation[i], delta=1.0, weight=2.0)
-#    moves[mvi++] = mvScale(turnover[i], lambda=5.0, weight=2.0)
+#    turnover[i] ~ dnUniform(0, 2)
+#    turnover[i].setValue(0.5)
+#    moves[mvi++] = mvScale(turnover[i], lambda=10.0, weight=4.0)
+#    moves[mvi++] = mvScale(turnover[i], lambda=2.0, weight=4.0)
+#    moves[mvi++] = mvScale(turnover[i], lambda=0.1, weight=4.0)
+#
+#    speciation[i] := base_speciation * exp(speciation_multiplier[i])
 #
 #}
 #
 #extinction := speciation * turnover
-
-base_speciation ~ dnExponential( speciation_pr )
-moves[mvi++] = mvSlide(base_speciation, delta = 1.0, weight=4)
-moves[mvi++] = mvSlide(base_speciation, delta = 0.1, weight=4)
+#diversification := speciation - extinction
 
 for (i in 1:4) {
-
-    if (i == 1) {
-        speciation_multiplier[i] <- 0.0
-    } else {
-        speciation_multiplier[i] ~ dnUniform(-2, 2)
-        speciation_multiplier[i].setValue(0.0)
-        moves[mvi++] = mvSlide(speciation_multiplier[i], delta=1.0, weight=2.0)
-    }
     
-    turnover[i] ~ dnUniform(0, 2)
-    turnover[i].setValue(0.5)
-    moves[mvi++] = mvScale(turnover[i], lambda=2.0, weight=2.0)
-    moves[mvi++] = mvScale(turnover[i], lambda=0.1, weight=2.0)
+    speciation[i] ~ dnExponential( speciation_pr )
+    speciation[i].setValue(0.5)
+    moves[mvi++] = mvScale(speciation[i], lambda=2.0, weight=4)
+    moves[mvi++] = mvScale(speciation[i], lambda=1.0, weight=4)
+    moves[mvi++] = mvScale(speciation[i], lambda=0.1, weight=4)
+    
+    extinction[i] ~ dnExponential( speciation_pr )
+    extinction[i].setValue(0.4)
+    moves[mvi++] = mvScale(extinction[i], lambda=2.0, weight=4)
+    moves[mvi++] = mvScale(extinction[i], lambda=1.0, weight=4)
+    moves[mvi++] = mvScale(extinction[i], lambda=0.1, weight=4)
 
-    speciation[i] := base_speciation * exp(speciation_multiplier[i])
+    up_down_scale_mv[i] = mvUpDownScale(lambda=0.5, weight=8)
+    up_down_scale_mv[i].addVariable( speciation[i], TRUE )
+    up_down_scale_mv[i].addVariable( extinction[i], TRUE )
+    moves[mvi++] = up_down_scale_mv[i]
 
 }
 
-extinction := speciation * turnover
 diversification := speciation - extinction
 
 # rate_matrix = [0A, 1A, 0B, 1B]
@@ -89,13 +101,13 @@ divers_0B := diversification[3]
 divers_1B := diversification[4]
 
 # transition rates among states
-num_events ~ dnUniform(1, 100)
-moves[mvi++] = mvScale(num_events, lambda=20, weight=5)
-moves[mvi++] = mvScale(num_events, lambda=2, weight=5)
+#num_events ~ dnUniform(1, 100)
+#moves[mvi++] = mvScale(num_events, lambda=20, weight=5)
+#moves[mvi++] = mvScale(num_events, lambda=2, weight=5)
+num_events <- 2
 rate_pr := psi.treeLength() / num_events
 
 # between observed states
-#rate_01 ~ dnExponential( rate_pr )
 rate_01 <- 0.0 # no secondary gain of incompatibility
 rate_10 ~ dnExponential( rate_pr )
 Q := [rate_01, rate_10]
@@ -108,20 +120,19 @@ R := [rate_AB, rate_BA]
 # the rate matrix for the combined observed and hidden states 
 rate_matrix := fnHiddenStateRateMatrix(Q, R, rescaled=false)
     
-#moves[mvi++] = mvSlide(rate_01, delta=1.0, weight=2.0)
-moves[mvi++] = mvSlide(rate_10, delta=1.0, weight=2.0)
-moves[mvi++] = mvSlide(rate_AB, delta=1.0, weight=2.0)
-moves[mvi++] = mvSlide(rate_BA, delta=1.0, weight=2.0)
-moves[mvi++] = mvSlide(rate_10, delta=0.1, weight=2.0)
-moves[mvi++] = mvSlide(rate_AB, delta=0.1, weight=2.0)
-moves[mvi++] = mvSlide(rate_BA, delta=0.1, weight=2.0)
+moves[mvi++] = mvScale(rate_10, lambda=1.0, weight=4.0)
+moves[mvi++] = mvScale(rate_AB, lambda=1.0, weight=4.0)
+moves[mvi++] = mvScale(rate_BA, lambda=1.0, weight=4.0)
+moves[mvi++] = mvScale(rate_10, lambda=0.1, weight=4.0)
+moves[mvi++] = mvScale(rate_AB, lambda=0.1, weight=4.0)
+moves[mvi++] = mvScale(rate_BA, lambda=0.1, weight=4.0)
 
 
 # root state frequencies 
-#root_states <- simplex( [0,1,0,1] ) # condition on starting in either 1A or 1B
-root_states ~ dnDirichlet( rep(1, 4) )
-moves[mvi++] = mvBetaSimplex(root_states, weight=2)
-moves[mvi++] = mvDirichletSimplex(root_states, weight=2)
+root_states <- simplex( [0,1,0,0] ) # condition on starting in 1A
+#root_states ~ dnDirichlet( rep(1, 4) )
+#moves[mvi++] = mvBetaSimplex(root_states, weight=2)
+#moves[mvi++] = mvDirichletSimplex(root_states, weight=2)
 
 
 
