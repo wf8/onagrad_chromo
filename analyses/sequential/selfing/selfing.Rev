@@ -38,39 +38,48 @@ data_exp <- data.expandCharacters( 2 )
 # r = ( ln N_t - ln N_0 ) / t
 # we use r as the mean for the speciation prior
 taxa <- psi.taxa()
-speciation_mean <- ln( 650 ) / psi.rootAge()
-speciation_pr <- 1 / speciation_mean
+rate_mean <- ln( ln( 650 / 2.0 ) / psi.rootAge() )
+rate_sd <- 2.0
 
 # speciation and extinction rates for each of the 4 states
+# drawn from log normal distributions
 for (i in 1:4) {
     
-    speciation[i] ~ dnExponential( speciation_pr )
-    moves[mvi++] = mvScale(speciation[i], lambda=2.0, weight=4)
-    moves[mvi++] = mvScale(speciation[i], lambda=1.0, weight=4)
-    moves[mvi++] = mvScale(speciation[i], lambda=0.1, weight=4)
+    log_speciation[i] ~ dnNormal(mean=rate_mean, sd=rate_sd)
+    moves[mvi++] = mvSlide(log_speciation[i], delta=2.0, weight=4)
+    moves[mvi++] = mvSlide(log_speciation[i], delta=0.5, weight=4)
+    moves[mvi++] = mvSlide(log_speciation[i], delta=0.01, weight=4)
     
-    extinction[i] ~ dnExponential( speciation_pr )
-    moves[mvi++] = mvScale(extinction[i], lambda=2.0, weight=4)
-    moves[mvi++] = mvScale(extinction[i], lambda=1.0, weight=4)
-    moves[mvi++] = mvScale(extinction[i], lambda=0.1, weight=4)
-
+    log_extinction[i] ~ dnNormal(mean=rate_mean, sd=rate_sd)
+    moves[mvi++] = mvSlide(log_extinction[i], delta=2.0, weight=4)
+    moves[mvi++] = mvSlide(log_extinction[i], delta=0.5, weight=4)
+    moves[mvi++] = mvSlide(log_extinction[i], delta=0.01, weight=4)
+    
     up_down_scale_mv[i] = mvUpDownScale(lambda=0.5, weight=8)
-    up_down_scale_mv[i].addVariable( speciation[i], TRUE )
-    up_down_scale_mv[i].addVariable( extinction[i], TRUE )
+    up_down_scale_mv[i].addVariable( log_speciation[i], TRUE )
+    up_down_scale_mv[i].addVariable( log_extinction[i], TRUE )
     moves[mvi++] = up_down_scale_mv[i]
+    
+    up_down_scale_mv2[i] = mvUpDownScale(lambda=2.0, weight=8)
+    up_down_scale_mv2[i].addVariable( log_speciation[i], TRUE )
+    up_down_scale_mv2[i].addVariable( log_extinction[i], TRUE )
+    moves[mvi++] = up_down_scale_mv2[i]
+
+    speciation[i] := exp( log_speciation[i] )
+    extinction[i] := exp( log_extinction[i] )
 
 }
 
 # some reasonable starting values from previous analyses
-speciation[1].setValue(0.2)
-speciation[2].setValue(0.15)
-speciation[3].setValue(1.8)
-speciation[4].setValue(0.9)
+log_speciation[1].setValue(ln(0.2))
+log_speciation[2].setValue(ln(0.15))
+log_speciation[3].setValue(ln(3.0))
+log_speciation[4].setValue(ln(0.9))
 
-extinction[1].setValue(0.4)
-extinction[2].setValue(0.05)
-extinction[3].setValue(1.5)
-extinction[4].setValue(0.4)
+log_extinction[1].setValue(ln(0.5))
+log_extinction[2].setValue(ln(0.05))
+log_extinction[3].setValue(ln(3.0))
+log_extinction[4].setValue(ln(0.3))
 
 diversification := speciation - extinction
 
@@ -83,32 +92,32 @@ divers_1B := diversification[4]
 # transition rates among states
 num_events ~ dnUniform(1, 1000)
 num_events.setValue(80.0)
-moves[mvi++] = mvScale(num_events, lambda=20, weight=5)
-moves[mvi++] = mvScale(num_events, lambda=2, weight=5)
+moves[mvi++] = mvScale(num_events, lambda=20, weight=3)
+moves[mvi++] = mvScale(num_events, lambda=2, weight=3)
 rate_pr := psi.treeLength() / num_events
 
 # between observed states
 rate_01 <- 0.0 # no secondary gain of incompatibility
 rate_10 ~ dnExponential( rate_pr )
-rate_10.setValue(0.2)
+rate_10.setValue(0.3)
 Q := [rate_01, rate_10]
 
 # between hidden states
 rate_AB ~ dnExponential( rate_pr )
 rate_AB.setValue(0.002)
 rate_BA ~ dnExponential( rate_pr )
-rate_BA.setValue(0.2)
+rate_BA.setValue(0.4)
 R := [rate_AB, rate_BA]
 
 # the rate matrix for the combined observed and hidden states 
 rate_matrix := fnHiddenStateRateMatrix(Q, R, rescaled=false)
     
-moves[mvi++] = mvScale(rate_10, lambda=1.0, weight=4.0)
-moves[mvi++] = mvScale(rate_AB, lambda=1.0, weight=4.0)
-moves[mvi++] = mvScale(rate_BA, lambda=1.0, weight=4.0)
-moves[mvi++] = mvScale(rate_10, lambda=0.1, weight=4.0)
-moves[mvi++] = mvScale(rate_AB, lambda=0.1, weight=4.0)
-moves[mvi++] = mvScale(rate_BA, lambda=0.1, weight=4.0)
+moves[mvi++] = mvScale(rate_10, lambda=1.0, weight=4)
+moves[mvi++] = mvScale(rate_AB, lambda=1.0, weight=4)
+moves[mvi++] = mvScale(rate_BA, lambda=1.0, weight=4)
+moves[mvi++] = mvScale(rate_10, lambda=0.1, weight=4)
+moves[mvi++] = mvScale(rate_AB, lambda=0.1, weight=4)
+moves[mvi++] = mvScale(rate_BA, lambda=0.1, weight=4)
 
 
 # root state frequencies 
