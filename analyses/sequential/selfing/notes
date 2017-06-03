@@ -5,8 +5,8 @@ The simulator uses 40 different moves in a random move schedule with 190 moves p
 
 # runs
 
-20 independent runs, each 500 iterations long (500 samples) for a total of 10000 samples.
+200 independent runs of 10000 iterations (1 sample per iteration),
+each sampling a tree from the posterior distribution of trees.
+
 The first 10% discarded as burnin.
 
-each independent run sampled 100 trees from posterior, for a total of 2000 trees
-out of the 3000 tree samples in the posterior

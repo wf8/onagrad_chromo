@@ -2,17 +2,15 @@
 
 #base_dir = ""
 sample_freq = 1
-fixed_tree = FALSE
-num_tree_samples = 100
 
 # set my move index
 mvi = 1
 mni = 1
 
 # read in trees
-if (fixed_tree) {
+if (rep == 1) {
    
-    # use only the MAP tree
+    # use the MAP tree
     psi <- readTrees(base_dir + "data/onagraceae_final_map_trimmed.tree")[1]
 
 } else {
@@ -20,8 +18,9 @@ if (fixed_tree) {
     # use the posterior distribution of trees
     trees <- readTrees(base_dir + "data/combined_trimmed.trees")
         
-    # read in the MAP tree to summarize ancestral states on
-    psi <- readTrees(base_dir + "data/onagraceae_final_map_trimmed.tree")[1]
+    # draw a random tree
+    j ~ dnUniformInteger(1, trees.size())
+    psi <- trees[j]
 
 }
 
@@ -38,48 +37,44 @@ data_exp <- data.expandCharacters( 2 )
 # r = ( ln N_t - ln N_0 ) / t
 # we use r as the mean for the speciation prior
 taxa <- psi.taxa()
-rate_mean <- ln( ln( 650 / 2.0 ) / psi.rootAge() )
-rate_sd <- 2.0
+rate_mean <- abs( ln( 650 / 2.0 ) / psi.rootAge() )
 
 # speciation and extinction rates for each of the 4 states
 # drawn from log normal distributions
 for (i in 1:4) {
     
-    log_speciation[i] ~ dnNormal(mean=rate_mean, sd=rate_sd)
-    moves[mvi++] = mvSlide(log_speciation[i], delta=2.0, weight=4)
-    moves[mvi++] = mvSlide(log_speciation[i], delta=0.5, weight=4)
-    moves[mvi++] = mvSlide(log_speciation[i], delta=0.01, weight=4)
+    speciation[i] ~ dnExponential(1/rate_mean)
+    moves[mvi++] = mvScale(speciation[i], lambda=2.0, weight=4)
+    moves[mvi++] = mvScale(speciation[i], lambda=0.5, weight=4)
+    moves[mvi++] = mvScale(speciation[i], lambda=0.01, weight=4)
     
-    log_extinction[i] ~ dnNormal(mean=rate_mean, sd=rate_sd)
-    moves[mvi++] = mvSlide(log_extinction[i], delta=2.0, weight=4)
-    moves[mvi++] = mvSlide(log_extinction[i], delta=0.5, weight=4)
-    moves[mvi++] = mvSlide(log_extinction[i], delta=0.01, weight=4)
+    extinction[i] ~ dnExponential(1/rate_mean)
+    moves[mvi++] = mvScale(extinction[i], lambda=2.0, weight=4)
+    moves[mvi++] = mvScale(extinction[i], lambda=0.5, weight=4)
+    moves[mvi++] = mvScale(extinction[i], lambda=0.01, weight=4)
     
     up_down_scale_mv[i] = mvUpDownScale(lambda=0.5, weight=8)
-    up_down_scale_mv[i].addVariable( log_speciation[i], TRUE )
-    up_down_scale_mv[i].addVariable( log_extinction[i], TRUE )
+    up_down_scale_mv[i].addVariable( speciation[i], TRUE )
+    up_down_scale_mv[i].addVariable( extinction[i], TRUE )
     moves[mvi++] = up_down_scale_mv[i]
     
     up_down_scale_mv2[i] = mvUpDownScale(lambda=2.0, weight=8)
-    up_down_scale_mv2[i].addVariable( log_speciation[i], TRUE )
-    up_down_scale_mv2[i].addVariable( log_extinction[i], TRUE )
+    up_down_scale_mv2[i].addVariable( speciation[i], TRUE )
+    up_down_scale_mv2[i].addVariable( extinction[i], TRUE )
     moves[mvi++] = up_down_scale_mv2[i]
-
-    speciation[i] := exp( log_speciation[i] )
-    extinction[i] := exp( log_extinction[i] )
 
 }
 
 # some reasonable starting values from previous analyses
-log_speciation[1].setValue(ln(0.2))
-log_speciation[2].setValue(ln(0.15))
-log_speciation[3].setValue(ln(3.0))
-log_speciation[4].setValue(ln(0.9))
+speciation[1].setValue(0.2)
+speciation[2].setValue(0.15)
+speciation[3].setValue(3.0)
+speciation[4].setValue(0.9)
 
-log_extinction[1].setValue(ln(0.5))
-log_extinction[2].setValue(ln(0.05))
-log_extinction[3].setValue(ln(3.0))
-log_extinction[4].setValue(ln(0.3))
+extinction[1].setValue(0.5)
+extinction[2].setValue(0.05)
+extinction[3].setValue(3.0)
+extinction[4].setValue(0.3)
 
 diversification := speciation - extinction
 
@@ -128,57 +123,20 @@ root_states <- simplex( [0,1,0,1] ) # condition on starting in 1A or 1B
 rho <- psi.ntips()/650
 
 # character dependent birth death process
-if (fixed_tree) {
+timetree ~ dnCDBDP( rootAge           = psi.rootAge(),
+                    speciationRates   = speciation,
+                    extinctionRates   = extinction, 
+                    Q                 = rate_matrix, 
+                    delta             = 1.0,
+                    pi                = root_states,
+                    rho               = rho,
+                    condition         = "survival",
+                    taxa              = taxa )
 
-    timetree ~ dnCDBDP( rootAge           = psi.rootAge(),
-                        speciationRates   = speciation,
-                        extinctionRates   = extinction, 
-                        Q                 = rate_matrix, 
-                        delta             = 1.0,
-                        pi                = root_states,
-                        rho               = rho,
-                        condition         = "survival",
-                        taxa              = taxa )
+#clamp the model with the observed tree and data
+timetree.clamp( psi )
+timetree.clampCharData( data_exp )
 
-    #clamp the model with the observed tree and data
-    timetree.clamp( psi )
-    timetree.clampCharData( data_exp )
-
-} else {
-    
-    timetree[1] ~ dnCDBDP( rootAge        = psi.rootAge(),
-                        speciationRates   = speciation,
-                        extinctionRates   = extinction, 
-                        Q                 = rate_matrix, 
-                        delta             = 1.0,
-                        pi                = root_states,
-                        rho               = rho,
-                        condition         = "survival",
-                        taxa              = taxa )
-
-    #clamp the model with the observed tree and data
-    timetree[1].clamp( psi )
-    timetree[1].clampCharData( data_exp )
-    
-    for (i in 1:num_tree_samples) {
-
-        j ~ dnUniformInteger(1, trees.size())
-        timetree[i + 1] ~ dnCDBDP( rootAge    = trees[j].rootAge(),
-                            speciationRates   = speciation,
-                            extinctionRates   = extinction, 
-                            Q                 = rate_matrix, 
-                            delta             = 1.0,
-                            pi                = root_states,
-                            rho               = rho,
-                            condition         = "survival",
-                            taxa              = taxa )
-
-        #clamp the model with the observed tree and data
-        timetree[i + 1].clamp( trees[j] )
-        timetree[i + 1].clampCharData( data_exp )
-
-    }
-}
 
 #############
 # The Model #
@@ -191,11 +149,9 @@ mymodel = model(timetree)
 # monitors
 monitors[mni++] = mnScreen(printgen=sample_freq, speciation)
 monitors[mni++] = mnModel(filename=base_dir + "output/selfing" + rep + ".log", printgen=sample_freq)
-if (fixed_tree) {
+if (rep == 1) {
     monitors[mni++] = mnStochasticCharacterMap(cdbdp=timetree, printgen=sample_freq, filename=base_dir + "output/stochastic_selfing" + rep + ".log", include_simmap=true)
-} else {
-    monitors[mni++] = mnStochasticCharacterMap(cdbdp=timetree[1], printgen=sample_freq, filename=base_dir + "output/stochastic_selfing" + rep + ".log", include_simmap=true)
-}
+} 
 
 ################
 # The Analysis #
@@ -205,7 +161,7 @@ if (fixed_tree) {
 mymcmc = mcmc(mymodel, monitors, moves)
 
 ### run the MCMC
-mymcmc.run(generations=500)
+mymcmc.run(generations=10000)
 
 q()
 
