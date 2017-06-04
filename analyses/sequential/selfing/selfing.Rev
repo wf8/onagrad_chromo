@@ -65,16 +65,15 @@ for (i in 1:4) {
 
 }
 
-# some reasonable starting values from previous analyses
-speciation[1].setValue(0.2)
+speciation[1].setValue(0.05)
 speciation[2].setValue(0.15)
-speciation[3].setValue(3.0)
-speciation[4].setValue(0.9)
+speciation[3].setValue(0.50)
+speciation[4].setValue(0.50)
 
-extinction[1].setValue(0.5)
-extinction[2].setValue(0.05)
-extinction[3].setValue(3.0)
-extinction[4].setValue(0.3)
+extinction[1].setValue(0.30)
+extinction[2].setValue(0.01)
+extinction[3].setValue(0.40)
+extinction[4].setValue(0.05)
 
 diversification := speciation - extinction
 
@@ -85,8 +84,9 @@ divers_0B := diversification[3]
 divers_1B := diversification[4]
 
 # transition rates among states
-num_events ~ dnUniform(1, 1000)
-num_events.setValue(80.0)
+#num_events ~ dnUniform(1, 1000)
+num_events ~ dnExponential(1/20)
+num_events.setValue(500)
 moves[mvi++] = mvScale(num_events, lambda=20, weight=3)
 moves[mvi++] = mvScale(num_events, lambda=2, weight=3)
 rate_pr := psi.treeLength() / num_events
@@ -94,14 +94,14 @@ rate_pr := psi.treeLength() / num_events
 # between observed states
 rate_01 <- 0.0 # no secondary gain of incompatibility
 rate_10 ~ dnExponential( rate_pr )
-rate_10.setValue(0.3)
+rate_10.setValue(0.2)
 Q := [rate_01, rate_10]
 
 # between hidden states
 rate_AB ~ dnExponential( rate_pr )
-rate_AB.setValue(0.002)
 rate_BA ~ dnExponential( rate_pr )
-rate_BA.setValue(0.4)
+rate_AB.setValue(0.01)
+rate_BA.setValue(0.3)
 R := [rate_AB, rate_BA]
 
 # the rate matrix for the combined observed and hidden states 
@@ -110,6 +110,7 @@ rate_matrix := fnHiddenStateRateMatrix(Q, R, rescaled=false)
 moves[mvi++] = mvScale(rate_10, lambda=1.0, weight=4)
 moves[mvi++] = mvScale(rate_AB, lambda=1.0, weight=4)
 moves[mvi++] = mvScale(rate_BA, lambda=1.0, weight=4)
+
 moves[mvi++] = mvScale(rate_10, lambda=0.1, weight=4)
 moves[mvi++] = mvScale(rate_AB, lambda=0.1, weight=4)
 moves[mvi++] = mvScale(rate_BA, lambda=0.1, weight=4)
@@ -147,7 +148,7 @@ timetree.clampCharData( data_exp )
 mymodel = model(timetree)
 
 # monitors
-monitors[mni++] = mnScreen(printgen=sample_freq, speciation)
+monitors[mni++] = mnScreen(printgen=sample_freq, num_events, diversification)
 monitors[mni++] = mnModel(filename=base_dir + "output/selfing" + rep + ".log", printgen=sample_freq)
 if (rep == 1) {
     monitors[mni++] = mnStochasticCharacterMap(cdbdp=timetree, printgen=sample_freq, filename=base_dir + "output/stochastic_selfing" + rep + ".log", include_simmap=true)
