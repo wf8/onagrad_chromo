@@ -9,6 +9,7 @@
 library(coda)
 library(ggplot2)
 
+input_file = "output-lognormal/events.tsv"
 
 # recursive function to traverse up tree towards
 # root looking for time of loss of self-incompatibility
@@ -33,9 +34,10 @@ get_time = function(iteration, parent, data) {
 
 # find all transitions from self-compatible B (state 2) to 
 # self-compatible A (state 0)
-data = read.table("output-20/test.tsv", header=TRUE, skip=0)
-d1 = data[which(data$start_state == 2),]
-d2 = d1[which(d1$end_state == 0),]
+data = read.table(input_file, header=TRUE, skip=0)
+#d1 = data[which(data$start_state == 2),]
+#d2 = d1[which(d1$end_state == 0),]
+d2 = data[which(data$end_state == 0),]
 
 # now calculate the lag times for each transition
 lag_times = vector()
