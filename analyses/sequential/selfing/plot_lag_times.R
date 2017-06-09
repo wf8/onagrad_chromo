@@ -54,7 +54,7 @@ for (i in 1:nrow(d2)) {
 
 
 # finally plot results
-pdf("lag_times.pdf", width=7, height=7)
+pdf("lag_times.pdf", width=5, height=5)
 
 mean_lag = mean(lag_times, na.rm=TRUE)
 print(paste("mean lag = ", mean_lag))
