@@ -43,12 +43,12 @@ rate_mean <- abs( ln( 650 / 2.0 ) / psi.rootAge() )
 # drawn from log normal distributions
 for (i in 1:4) {
     
-    speciation[i] ~ dnExponential(1/rate_mean)
+    speciation[i] ~ dnLognormal(ln(rate_mean), 1)
     moves[mvi++] = mvScale(speciation[i], lambda=2.0, weight=4)
     moves[mvi++] = mvScale(speciation[i], lambda=0.5, weight=4)
     moves[mvi++] = mvScale(speciation[i], lambda=0.01, weight=4)
     
-    extinction[i] ~ dnExponential(1/rate_mean)
+    extinction[i] ~ dnLognormal(ln(rate_mean), 1)
     moves[mvi++] = mvScale(extinction[i], lambda=2.0, weight=4)
     moves[mvi++] = mvScale(extinction[i], lambda=0.5, weight=4)
     moves[mvi++] = mvScale(extinction[i], lambda=0.01, weight=4)
