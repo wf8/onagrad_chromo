@@ -11,7 +11,7 @@ library(coda)
 library(ggplot2)
 source("multiplot.R")
 
-data <- read.table("output-20/selfing1.log", header=TRUE, skip=0)
+data <- read.table("output-lognormal/selfing1.log", header=TRUE, skip=0)
 
 t <- c("C A", "I A", "C B", "I B")
 l <- length(data$extinction.1.)
@@ -24,9 +24,9 @@ pdf("spec_extinct_rates.pdf", width=7, height=6)
 cols <- c("springgreen1", "springgreen4", "slateblue1", "slateblue4")
 a <- c(0.3,0.6,0.3,0.6)
 
-p1 <- ggplot(dat_spec, aes(x=dens, fill=State)) + labs(title = "Speciation", x="Rate", y="Posterior Density") + geom_density() + xlim(c(0, 1)) + scale_fill_manual(values=alpha(cols, a)) + theme_minimal()
-p2 <- ggplot(dat_ext, aes(x=dens, fill=State)) + labs(title = "Extinction", x="Rate", y="Posterior Density") + geom_density() + xlim(c(0, 1)) + scale_fill_manual(values=alpha(cols, a)) + theme_minimal()
-p3 <- ggplot(dat_div, aes(x=dens, fill=State)) + labs(title = "Net-Diversification", x="Rate", y="Posterior Density") + geom_density() + xlim(c(-0.5, 0.75)) + scale_fill_manual(values=alpha(cols, a)) + theme_minimal()
+p1 <- ggplot(dat_spec, aes(x=dens, fill=State)) + labs(title = "Speciation", x="Rate", y="Posterior Density") + geom_density() + xlim(c(0, 2.0)) + scale_fill_manual(values=alpha(cols, a)) + theme_minimal()
+p2 <- ggplot(dat_ext, aes(x=dens, fill=State)) + labs(title = "Extinction", x="Rate", y="Posterior Density") + geom_density() + xlim(c(0, 2.0)) + scale_fill_manual(values=alpha(cols, a)) + theme_minimal() + coord_cartesian(ylim=c(0, 20))
+p3 <- ggplot(dat_div, aes(x=dens, fill=State)) + labs(title = "Net-Diversification", x="Rate", y="Posterior Density") + geom_density() + xlim(c(-0.5, 1.0)) + scale_fill_manual(values=alpha(cols, a)) + theme_minimal()
 
 
 multiplot(p3, p1, p2)

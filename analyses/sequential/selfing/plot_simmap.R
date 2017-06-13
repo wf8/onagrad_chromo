@@ -1,10 +1,10 @@
 library(plotrix)
 library(phytools)
 
-character_file = "output/marginal_character.tree"
-posteriors_file = "output/marginal_posterior.tree"
-#character_file = "output/conditional_character.tree"
-#posteriors_file = "output/conditional_posterior.tree"
+character_file = "output-lognormal/marginal_character.tree"
+posteriors_file = "output-lognormal/marginal_posterior.tree"
+#character_file = "output-5/conditional_character.tree"
+#posteriors_file = "output-5/conditional_posterior.tree"
 
 write_pdf = !FALSE
 prompt = FALSE
