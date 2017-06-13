@@ -11,7 +11,10 @@ library(coda)
 library(ggplot2)
 source("multiplot.R")
 
+burnin = 1000
+
 data <- read.table("output-lognormal/selfing1.log", header=TRUE, skip=0)
+data <- data[-c(1:burnin), ] 
 
 t <- c("C A", "I A", "C B", "I B")
 l <- length(data$extinction.1.)
