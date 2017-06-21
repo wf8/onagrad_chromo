@@ -77,29 +77,42 @@ R := fnChromosomesPloidy(max_chromo, gamma[1], delta[1], rho[1], eta[1], gamma_l
 
 #root_frequencies_prior <- rep(1, 2 * (max_chromo + 1))
 # condition on root state being diploid
+for (i in 1:(max_chromo + 1)) {
+    root_frequencies_prior[i] <- 1.0
+}
+for (i in (max_chromo + 2):(2 * (max_chromo + 1))) {
+    root_frequencies_prior[i] <- 0.0
+    #root_frequencies_prior[i] <- 1e-2
+}
+
+root_frequencies ~ dnDirichlet(root_frequencies_prior)
+moves[mi++] = mvBetaSimplex(root_frequencies, alpha=0.5, weight=10)
+moves[mi++] = mvElementSwapSimplex(root_frequencies, weight=10)
+
+#for (i in 1:(2*(max_chromo + 1))) {
+#    if (i == 9) {
+#        root_frequencies_prior[i] = 0.90
+#    } else if (i == 6) {
+#        root_frequencies_prior[i] = 0.07
+#    } else if (i == 8) {
+#        root_frequencies_prior[i] = 0.03
+#    } else {
+#        root_frequencies_prior[i] = 0.0
+#    }
+#}
+#root_frequencies <- simplex(root_frequencies_prior)
+
+#root_frequencies_prior <- rep(1, max_chromo + 1)
+#root_frequencies_d ~ dnDirichlet(root_frequencies_prior)
+#moves[mi++] = mvBetaSimplex(root_frequencies_d, alpha=0.5, weight=10)
+#moves[mi++] = mvElementSwapSimplex(root_frequencies_d, weight=10)
 #for (i in 1:(max_chromo + 1)) {
-#    root_frequencies_prior[i] <- 1.0
+#    root_frequencies[i] := root_frequencies_d[i]
 #}
 #for (i in (max_chromo + 2):(2 * (max_chromo + 1))) {
-#    root_frequencies_prior[i] <- 0.0
-#    #root_frequencies_prior[i] <- 1e-2
+#    root_frequencies[i] := 0.0
 #}
-#
-#root_frequencies ~ dnDirichlet(root_frequencies_prior)
-#moves[mi++] = mvBetaSimplex(root_frequencies, alpha=0.5, weight=10)
-#moves[mi++] = mvElementSwapSimplex(root_frequencies, weight=10)
-for (i in 1:(2*(max_chromo + 1))) {
-    if (i == 9) {
-        root_frequencies_prior[i] = 0.90
-    } else if (i == 6) {
-        root_frequencies_prior[i] = 0.07
-    } else if (i == 8) {
-        root_frequencies_prior[i] = 0.03
-    } else {
-        root_frequencies_prior[i] = 0.0
-    }
-}
-root_frequencies <- simplex(root_frequencies_prior)
+#rf := simplex(root_frequencies)
 
 # speciation rates for each cladogenetic event type
 
@@ -109,7 +122,8 @@ root_frequencies <- simplex(root_frequencies_prior)
 # r = ( ln N_t - ln N_0 ) / t
 # we use r as the mean for the speciation prior
 taxa <- psi.taxa()
-speciation_mean <- ln( psi.ntips() ) / psi.rootAge()
+#speciation_mean <- ln( psi.ntips() ) / psi.rootAge()
+speciation_mean <- abs( ln( 650 / 2.0 ) / psi.rootAge() )
 speciation_pr <- 1 / speciation_mean
 
 # ~1270 total species in lythraceae/onagraceae
@@ -120,13 +134,19 @@ clado_change_ratio <- 2/num_speciation_events
 # separate rates for diploid and polyploid lineages
 for (i in 1:2) {
 
-    clado_no_change[i] ~ dnExponential(speciation_pr)
-    mu[i] ~ dnExponential(speciation_pr)
+    #clado_no_change[i] ~ dnExponential(speciation_pr)
+    #mu[i] ~ dnExponential(speciation_pr)
+    clado_no_change[i] ~ dnLognormal(ln(speciation_pr), 1)
+    mu[i] ~ dnLognormal(ln(speciation_pr), 1)
 
-    clado_fission[i] ~ dnReversibleJumpMixture(constantValue=0.0, baseDistribution=dnExponential( speciation_pr * (1/clado_change_ratio) ), p=0.5)
-    clado_fusion[i] ~ dnReversibleJumpMixture(constantValue=0.0, baseDistribution=dnExponential( speciation_pr * (1/clado_change_ratio) ), p=0.5)
-    clado_polyploid[i] ~ dnReversibleJumpMixture(constantValue=0.0, baseDistribution=dnExponential( speciation_pr * (1/clado_change_ratio) ), p=0.5)
-    clado_demipoly[i] ~ dnReversibleJumpMixture(constantValue=0.0, baseDistribution=dnExponential( speciation_pr * (1/clado_change_ratio) ), p=0.5)
+    #clado_fission[i] ~ dnReversibleJumpMixture(constantValue=0.0, baseDistribution=dnExponential( speciation_pr * (1/clado_change_ratio) ), p=0.5)
+    #clado_fusion[i] ~ dnReversibleJumpMixture(constantValue=0.0, baseDistribution=dnExponential( speciation_pr * (1/clado_change_ratio) ), p=0.5)
+    #clado_polyploid[i] ~ dnReversibleJumpMixture(constantValue=0.0, baseDistribution=dnExponential( speciation_pr * (1/clado_change_ratio) ), p=0.5)
+    #clado_demipoly[i] ~ dnReversibleJumpMixture(constantValue=0.0, baseDistribution=dnExponential( speciation_pr * (1/clado_change_ratio) ), p=0.5)
+    clado_fission[i] ~ dnReversibleJumpMixture(constantValue=0.0, baseDistribution=dnLognormal( ln(speciation_pr * (1/clado_change_ratio)), 1 ), p=0.5)
+    clado_fusion[i] ~ dnReversibleJumpMixture(constantValue=0.0, baseDistribution=dnLognormal( ln(speciation_pr * (1/clado_change_ratio)), 1 ), p=0.5)
+    clado_polyploid[i] ~ dnReversibleJumpMixture(constantValue=0.0, baseDistribution=dnLognormal( ln(speciation_pr * (1/clado_change_ratio)), 1 ), p=0.5)
+    clado_demipoly[i] ~ dnReversibleJumpMixture(constantValue=0.0, baseDistribution=dnLognormal( ln(speciation_pr * (1/clado_change_ratio)), 1 ), p=0.5)
 
     clado_no_change[i].setValue(speciation_mean)
     clado_fission[i].setValue(0.01)
