@@ -52,15 +52,15 @@ for (i in 1:4) {
 
 }
 
-speciation[1].setValue(0.05)
+speciation[1].setValue(0.15)
 speciation[2].setValue(0.15)
 speciation[3].setValue(0.50)
 speciation[4].setValue(0.50)
 
 extinction[1].setValue(0.30)
-extinction[2].setValue(0.01)
+extinction[2].setValue(0.30)
 extinction[3].setValue(0.40)
-extinction[4].setValue(0.05)
+extinction[4].setValue(0.40)
 
 diversification := speciation - extinction
 
@@ -135,7 +135,7 @@ timetree.clampCharData( data_exp )
 mymodel = model(timetree)
 
 # monitors
-monitors[mni++] = mnScreen(printgen=sample_freq, num_events, diversification)
+monitors[mni++] = mnScreen(printgen=sample_freq, num_events, speciation, extinction)
 monitors[mni++] = mnModel(filename=base_dir + "output/selfing" + rep + ".log", printgen=sample_freq)
 
 ################
