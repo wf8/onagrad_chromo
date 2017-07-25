@@ -85,9 +85,9 @@ for (i in (max_chromo + 2):(2 * (max_chromo + 1))) {
     #root_frequencies_prior[i] <- 1e-2
 }
 
-root_frequencies ~ dnDirichlet(root_frequencies_prior)
-moves[mi++] = mvBetaSimplex(root_frequencies, alpha=0.5, weight=10)
-moves[mi++] = mvElementSwapSimplex(root_frequencies, weight=10)
+#root_frequencies ~ dnDirichlet(root_frequencies_prior)
+#moves[mi++] = mvBetaSimplex(root_frequencies, alpha=0.5, weight=10)
+#moves[mi++] = mvElementSwapSimplex(root_frequencies, weight=10)
 
 #for (i in 1:(2*(max_chromo + 1))) {
 #    if (i == 9) {
@@ -100,7 +100,7 @@ moves[mi++] = mvElementSwapSimplex(root_frequencies, weight=10)
 #        root_frequencies_prior[i] = 0.0
 #    }
 #}
-#root_frequencies <- simplex(root_frequencies_prior)
+root_frequencies <- simplex(root_frequencies_prior)
 
 #root_frequencies_prior <- rep(1, max_chromo + 1)
 #root_frequencies_d ~ dnDirichlet(root_frequencies_prior)
@@ -124,7 +124,7 @@ moves[mi++] = mvElementSwapSimplex(root_frequencies, weight=10)
 taxa <- psi.taxa()
 #speciation_mean <- ln( psi.ntips() ) / psi.rootAge()
 speciation_mean <- abs( ln( 650 / 2.0 ) / psi.rootAge() )
-speciation_pr <- 1 / speciation_mean
+#speciation_pr <- 1 / speciation_mean
 
 # ~1270 total species in lythraceae/onagraceae
 # calculate ratio of 2 expected clado changes over the tree
@@ -136,19 +136,20 @@ for (i in 1:2) {
 
     #clado_no_change[i] ~ dnExponential(speciation_pr)
     #mu[i] ~ dnExponential(speciation_pr)
-    clado_no_change[i] ~ dnLognormal(ln(speciation_pr), 1)
-    mu[i] ~ dnLognormal(ln(speciation_pr), 1)
+    clado_no_change[i] ~ dnLognormal(ln(speciation_mean), 1)
+    mu[i] ~ dnLognormal(ln(speciation_mean), 1)
 
     #clado_fission[i] ~ dnReversibleJumpMixture(constantValue=0.0, baseDistribution=dnExponential( speciation_pr * (1/clado_change_ratio) ), p=0.5)
     #clado_fusion[i] ~ dnReversibleJumpMixture(constantValue=0.0, baseDistribution=dnExponential( speciation_pr * (1/clado_change_ratio) ), p=0.5)
     #clado_polyploid[i] ~ dnReversibleJumpMixture(constantValue=0.0, baseDistribution=dnExponential( speciation_pr * (1/clado_change_ratio) ), p=0.5)
     #clado_demipoly[i] ~ dnReversibleJumpMixture(constantValue=0.0, baseDistribution=dnExponential( speciation_pr * (1/clado_change_ratio) ), p=0.5)
-    clado_fission[i] ~ dnReversibleJumpMixture(constantValue=0.0, baseDistribution=dnLognormal( ln(speciation_pr * (1/clado_change_ratio)), 1 ), p=0.5)
-    clado_fusion[i] ~ dnReversibleJumpMixture(constantValue=0.0, baseDistribution=dnLognormal( ln(speciation_pr * (1/clado_change_ratio)), 1 ), p=0.5)
-    clado_polyploid[i] ~ dnReversibleJumpMixture(constantValue=0.0, baseDistribution=dnLognormal( ln(speciation_pr * (1/clado_change_ratio)), 1 ), p=0.5)
-    clado_demipoly[i] ~ dnReversibleJumpMixture(constantValue=0.0, baseDistribution=dnLognormal( ln(speciation_pr * (1/clado_change_ratio)), 1 ), p=0.5)
+    clado_fission[i] ~ dnReversibleJumpMixture(constantValue=0.0, baseDistribution=dnLognormal( ln(speciation_mean * (1/clado_change_ratio)), 1 ), p=0.5)
+    clado_fusion[i] ~ dnReversibleJumpMixture(constantValue=0.0, baseDistribution=dnLognormal( ln(speciation_mean * (1/clado_change_ratio)), 1 ), p=0.5)
+    clado_polyploid[i] ~ dnReversibleJumpMixture(constantValue=0.0, baseDistribution=dnLognormal( ln(speciation_mean * (1/clado_change_ratio)), 1 ), p=0.5)
+    clado_demipoly[i] ~ dnReversibleJumpMixture(constantValue=0.0, baseDistribution=dnLognormal( ln(speciation_mean * (1/clado_change_ratio)), 1 ), p=0.5)
 
     clado_no_change[i].setValue(speciation_mean)
+    mu[i].setValue(speciation_mean * 0.5)
     clado_fission[i].setValue(0.01)
     clado_fusion[i].setValue(0.01)
     clado_polyploid[i].setValue(0.01)
