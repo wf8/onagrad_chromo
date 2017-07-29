@@ -1,0 +1,17 @@
+
+# rate difference results with 5 expected events:
+
+[1] "probability of observing smaller value: 0.2975"
+Empirical CDF:    373 unique values with summary
+   Min. 1st Qu.  Median    Mean 3rd Qu.    Max.
+ 0.0000  0.6809  1.0170  0.9057  1.1340  1.9980
+[1] "num samples after burnin = 901"
+
+# rate difference results with 20 expected events:
+
+[1] "probability of observing smaller value: 0.2775"
+Empirical CDF:    341 unique values with summary
+   Min. 1st Qu.  Median    Mean 3rd Qu.    Max.
+ 0.0000  0.8621  1.0290  1.0200  1.1800  2.3430
+[1] "num samples after burnin = 901"
+
