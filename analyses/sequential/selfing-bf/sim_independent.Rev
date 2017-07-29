@@ -1,8 +1,8 @@
 #!/usr/bin/rb
 
-rep = 1
-seed(1)
-base_dir = ""
+#rep = 1
+#seed(1)
+#base_dir = ""
 sample_freq = 1
 
 # set my move index
@@ -13,7 +13,7 @@ mni = 1
 psi <- readTrees(base_dir + "data/onagraceae_final_map_trimmed.tree")[1]
 
 # simulate binary character data with the mean rate estimated from empirical data
-Q_s := fnFreeK( [0.0, 5/psi.treeLength()] , rescaled=false )
+Q_s := fnFreeK( [0.0, 10/psi.treeLength()] , rescaled=false )
 sim_data ~ dnPhyloCTMC( psi, Q_s, nSites=1, branchRates=1.0, rootFrequencies=simplex([0,1]), type="NaturalNumbers")
 
 # add unobserved hidden state
