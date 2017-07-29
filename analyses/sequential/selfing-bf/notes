@@ -1,4 +1,19 @@
 
 # marginal likelihoods: observed data
 
+dependent: -2108.13
 independent: -2118.74
+
+ln(BF) = K = -2108.13 - -2118.74 = 10.61
+BF = e^K = 40538 
+decisive support for dependent model (Jeffreys 1961)
+
+# marginal likelihoods: simulated data rep 1
+# rate = 5 expected events
+
+dependent: -2031.85
+independent: -2034.95
+
+ln(BF) = K = -2031.85 - -2034.95 = 3.1
+BF = e^K = 22.2
+strong suppor for dependent.....
