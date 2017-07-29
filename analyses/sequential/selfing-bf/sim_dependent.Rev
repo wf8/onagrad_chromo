@@ -144,7 +144,7 @@ pow_p = powerPosterior(mymodel, moves, monitors, base_dir + "output/sim_dependen
 pow_p.burnin(generations=100, tuningInterval=10)
 pow_p.run(generations=100)
 ss = steppingStoneSampler(file=base_dir + "output/sim_dependent" + rep + ".out", powerColumnName="power", likelihoodColumnName="likelihood")
-ss.marginal()
+write(rep, ss.marginal(), "\n", filename=bases_dir + "output/bf_dependent.tsv", append=TRUE, separator="\t")
 
 q()
 
