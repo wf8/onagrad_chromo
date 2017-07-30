@@ -99,22 +99,39 @@ rate_10.setValue(0.2)
 Q := [rate_01, rate_10]
 
 # between hidden states
-rate_AB ~ dnExponential( rate_pr )
-rate_BA ~ dnExponential( rate_pr )
-rate_AB.setValue(0.01)
-rate_BA.setValue(0.3)
-R := [rate_AB, rate_BA]
+rate_H1 ~ dnExponential( rate_pr )
+rate_H2 ~ dnExponential( rate_pr )
+rate_H3 ~ dnExponential( rate_pr )
+rate_H4 ~ dnExponential( rate_pr )
+rate_H5 ~ dnExponential( rate_pr )
+rate_H6 ~ dnExponential( rate_pr )
+rate_H7 ~ dnExponential( rate_pr )
+rate_H8 ~ dnExponential( rate_pr )
+rate_H9 ~ dnExponential( rate_pr )
+rate_H10 ~ dnExponential( rate_pr )
+rate_H11 ~ dnExponential( rate_pr )
+rate_H12 ~ dnExponential( rate_pr )
+R := [rate_H1, rate_H2, rate_H3, rate_H4, rate_H5, rate_H6,
+      rate_H7, rate_H8, rate_H9, rate_H10, rate_H11, rate_H12]
 
 # the rate matrix for the combined observed and hidden states 
 rate_matrix := fnHiddenStateRateMatrix(Q, R, rescaled=false)
     
 moves[mvi++] = mvScale(rate_10, lambda=1.0, weight=4)
-moves[mvi++] = mvScale(rate_AB, lambda=1.0, weight=4)
-moves[mvi++] = mvScale(rate_BA, lambda=1.0, weight=4)
-
 moves[mvi++] = mvScale(rate_10, lambda=0.1, weight=4)
-moves[mvi++] = mvScale(rate_AB, lambda=0.1, weight=4)
-moves[mvi++] = mvScale(rate_BA, lambda=0.1, weight=4)
+
+moves[mvi++] = mvScale(rate_H1, lambda=1.0, weight=4)
+moves[mvi++] = mvScale(rate_H2, lambda=1.0, weight=4)
+moves[mvi++] = mvScale(rate_H3, lambda=1.0, weight=4)
+moves[mvi++] = mvScale(rate_H4, lambda=1.0, weight=4)
+moves[mvi++] = mvScale(rate_H5, lambda=1.0, weight=4)
+moves[mvi++] = mvScale(rate_H6, lambda=1.0, weight=4)
+moves[mvi++] = mvScale(rate_H7, lambda=1.0, weight=4)
+moves[mvi++] = mvScale(rate_H8, lambda=1.0, weight=4)
+moves[mvi++] = mvScale(rate_H9, lambda=1.0, weight=4)
+moves[mvi++] = mvScale(rate_H10, lambda=1.0, weight=4)
+moves[mvi++] = mvScale(rate_H11, lambda=1.0, weight=4)
+moves[mvi++] = mvScale(rate_H12, lambda=1.0, weight=4)
 
 
 # root state frequencies 
