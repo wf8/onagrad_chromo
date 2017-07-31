@@ -13,8 +13,11 @@ mni = 1
 psi <- readTrees(base_dir + "data/onagraceae_final_map_trimmed.tree")[1]
 
 # simulate binary character data with the mean rate estimated from empirical data
-Q_s := fnFreeK( [0.0, 10/psi.treeLength()] , rescaled=false )
-sim_data ~ dnPhyloCTMC( psi, Q_s, nSites=1, branchRates=1.0, rootFrequencies=simplex([0,1]), type="NaturalNumbers")
+#Q_s := fnFreeK( [0.0, 10/psi.treeLength()] , rescaled=false )
+#sim_data ~ dnPhyloCTMC( psi, Q_s, nSites=1, branchRates=1.0, rootFrequencies=simplex([0,1]), type="NaturalNumbers")
+
+# read in simulated dataset
+sim_data <- readCharacterDataDelimited(base_dir + "ran_data/" + rep + ".csv", stateLabels=3, type="NaturalNumbers", delimiter=",", headers=FALSE)
 
 # add unobserved hidden state
 data_exp <- sim_data.expandCharacters( 2 )
