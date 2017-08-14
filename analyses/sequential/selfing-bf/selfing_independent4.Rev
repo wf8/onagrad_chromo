@@ -1,8 +1,8 @@
 #!/usr/bin/rb
 
-#rep = 1
-#seed(1)
-#base_dir = ""
+rep = 1
+seed(1)
+base_dir = ""
 sample_freq = 1
 
 # set my move index
@@ -12,12 +12,11 @@ mni = 1
 # use the MAP tree
 psi <- readTrees(base_dir + "data/onagraceae_final_map_trimmed.tree")[1]
 
-# simulate binary character data with the mean rate estimated from empirical data
-Q_s := fnFreeK( [0.0, 10/psi.treeLength()] , rescaled=false )
-sim_data ~ dnPhyloCTMC( psi, Q_s, nSites=1, branchRates=1.0, rootFrequencies=simplex([0,1]), type="NaturalNumbers")
+# read in selfing data
+data <- readCharacterDataDelimited(base_dir + "data/selfing_data_complete.csv", stateLabels=3, type="NaturalNumbers", delimiter=",", headers=TRUE)
 
 # add unobserved hidden state
-data_exp <- sim_data.expandCharacters( 4 )
+data_exp <- data.expandCharacters( 4 )
 
 
 # expected num species at time t under constant birth-death is
@@ -133,10 +132,8 @@ moves[mvi++] = mvScale(rate_H10, lambda=1.0, weight=4)
 moves[mvi++] = mvScale(rate_H11, lambda=1.0, weight=4)
 moves[mvi++] = mvScale(rate_H12, lambda=1.0, weight=4)
 
-
 # root state frequencies 
 root_states <- simplex( [0,1,0,1,0,1,0,1] ) # condition on starting in 1A, 1B, 1C, or 1D
-
 
 # rho is the probability of sampling species at the present
 rho <- psi.ntips()/650
@@ -169,11 +166,12 @@ mymodel = model(timetree)
 monitors[mni++] = mnScreen(printgen=sample_freq, num_events, diversification)
 
 # calculate marginal likelihood
-pow_p = powerPosterior(mymodel, moves, monitors, base_dir + "output/sim_independent8" + rep + ".out", cats=50)
+pow_p = powerPosterior(mymodel, moves, monitors, base_dir + "output/independent4" + rep + ".out", cats=50)
 pow_p.burnin(generations=100, tuningInterval=10)
 pow_p.run(generations=100)
-ss = steppingStoneSampler(file=base_dir + "output/sim_independent8" + rep + ".out", powerColumnName="power", likelihoodColumnName="likelihood")
+ss = steppingStoneSampler(file=base_dir + "output/independent4" + rep + ".out", powerColumnName="power", likelihoodColumnName="likelihood")
 ss.marginal()
-write(rep, ss.marginal(), "\n", filename=base_dir + "output/bf_independent8.tsv", append=TRUE, separator="\t")
+write(ss.marginal(), filename=base_dir + "bf_independent4.tsv", append=TRUE, separator="\t")
 
 q()
+

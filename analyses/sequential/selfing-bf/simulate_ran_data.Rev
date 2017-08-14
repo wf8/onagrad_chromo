@@ -1,0 +1,33 @@
+#!/usr/bin/rb
+
+num_reps = 100
+output_dir = "ran_data/"
+base_dir = ""
+
+psi = readTrees(base_dir + "data/onagraceae_final_map_trimmed.tree")[1]
+data = readCharacterDataDelimited(base_dir + "data/selfing_data_complete.csv", stateLabels=3, type="NaturalNumbers", delimiter=",", headers=TRUE)
+taxa = psi.taxa()
+
+# simulate random datasets with the correct proportion of state 0 and 1
+for (rep in 1:num_reps) {
+
+    for (i in 1:taxa.size()) {
+
+        # 21% of the observed data is state 1
+        #state = 0
+        #x ~ dnUniform(0, 1)
+        #if (x <= 0.21) {
+        #    state = 1
+        #}
+        #write(taxa[i], state + "\n", filename=base_dir + output_dir + rep + ".csv", separator=",", append=TRUE)
+        x ~ dnUniformInteger(1, taxa.size()+1)
+        state = data[x][1]
+        write(taxa[i], state, "\n", filename=base_dir + output_dir + rep + ".csv", separator=",", append=TRUE)
+
+    }
+
+}
+
+
+q()
+

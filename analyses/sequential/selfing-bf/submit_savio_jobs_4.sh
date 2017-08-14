@@ -2,6 +2,5 @@
 
 for job in {0..4}
 do
-    sbatch runs_dep/ono${job}.sh
-    sbatch runs_ind/ono${job}.sh
+    sbatch runs_ind4/ono${job}.sh
 done
