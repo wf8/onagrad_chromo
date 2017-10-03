@@ -11,7 +11,16 @@ mni = 1
 psi <- readTrees(base_dir + "data/onagraceae_final_map_trimmed.tree")[1]
 
 # simulate binary character data with the mean rate estimated from empirical data
-Q_s := fnFreeK( [0.0, 0.218] , rescaled=false )
+#Q_s := fnFreeK( [0.0, 0.218] , rescaled=false )
+#sim_data ~ dnPhyloCTMC( psi, Q_s, nSites=1, branchRates=1.0, rootFrequencies=simplex([0,1]), type="NaturalNumbers")
+
+#rate_pr_sim := psi.treeLength() / 5
+#r1 ~ dnExponential( rate_pr_sim )
+#r2 ~ dnExponential( rate_pr_sim )
+#Q_s := fnFreeK( [r1, r2] , rescaled=false )
+#sim_data ~ dnPhyloCTMC( psi, Q_s, nSites=1, branchRates=1.0, rootFrequencies=simplex([1,1]), type="NaturalNumbers")
+
+Q_s := fnFreeK( [0.0, 20/psi.treeLength()] , rescaled=false )
 sim_data ~ dnPhyloCTMC( psi, Q_s, nSites=1, branchRates=1.0, rootFrequencies=simplex([0,1]), type="NaturalNumbers")
 
 # add unobserved hidden state
@@ -52,16 +61,6 @@ for (i in 1:4) {
 
 }
 
-speciation[1].setValue(0.15)
-speciation[2].setValue(0.15)
-speciation[3].setValue(0.50)
-speciation[4].setValue(0.50)
-
-extinction[1].setValue(0.30)
-extinction[2].setValue(0.30)
-extinction[3].setValue(0.40)
-extinction[4].setValue(0.40)
-
 diversification := speciation - extinction
 
 # rate_matrix = [0A, 1A, 0B, 1B]
@@ -73,31 +72,30 @@ divers_1B := diversification[4]
 # transition rates among states
 #num_events ~ dnUniform(1, 1000)
 num_events ~ dnExponential(1/20)
-num_events.setValue(500)
 moves[mvi++] = mvScale(num_events, lambda=20, weight=3)
 moves[mvi++] = mvScale(num_events, lambda=2, weight=3)
 rate_pr := psi.treeLength() / num_events
 
 # between observed states
 rate_01 <- 0.0 # no secondary gain of incompatibility
+#rate_01 ~ dnExponential( rate_pr )
 rate_10 ~ dnExponential( rate_pr )
-rate_10.setValue(0.2)
 Q := [rate_01, rate_10]
 
 # between hidden states
 rate_AB ~ dnExponential( rate_pr )
 rate_BA ~ dnExponential( rate_pr )
-rate_AB.setValue(0.01)
-rate_BA.setValue(0.3)
 R := [rate_AB, rate_BA]
 
 # the rate matrix for the combined observed and hidden states 
 rate_matrix := fnHiddenStateRateMatrix(Q, R, rescaled=false)
     
+#moves[mvi++] = mvScale(rate_01, lambda=1.0, weight=4)
 moves[mvi++] = mvScale(rate_10, lambda=1.0, weight=4)
 moves[mvi++] = mvScale(rate_AB, lambda=1.0, weight=4)
 moves[mvi++] = mvScale(rate_BA, lambda=1.0, weight=4)
 
+#moves[mvi++] = mvScale(rate_01, lambda=0.1, weight=4)
 moves[mvi++] = mvScale(rate_10, lambda=0.1, weight=4)
 moves[mvi++] = mvScale(rate_AB, lambda=0.1, weight=4)
 moves[mvi++] = mvScale(rate_BA, lambda=0.1, weight=4)
@@ -105,6 +103,7 @@ moves[mvi++] = mvScale(rate_BA, lambda=0.1, weight=4)
 
 # root state frequencies 
 root_states <- simplex( [0,1,0,1] ) # condition on starting in 1A or 1B
+#root_states <- simplex( [1,1,1,1] ) 
 
 
 # rho is the probability of sampling species at the present
@@ -146,7 +145,7 @@ monitors[mni++] = mnModel(filename=base_dir + "output/selfing" + rep + ".log", p
 mymcmc = mcmc(mymodel, monitors, moves)
 
 ### run the MCMC
-mymcmc.run(generations=10000)
+mymcmc.run(generations=1000)
 
 q()
 

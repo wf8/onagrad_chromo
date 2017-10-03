@@ -13,7 +13,7 @@ mni = 1
 psi <- readTrees(base_dir + "data/onagraceae_final_map_trimmed.tree")[1]
 
 # read in selfing data
-data <- readCharacterDataDelimited(base_dir + "data/selfing_data_complete.csv", stateLabels=3, type="NaturalNumbers", delimiter=",", headers=TRUE)
+data <- readCharacterDataDelimited(base_dir + "data/selfing_data_complete.csv", stateLabels=2, type="NaturalNumbers", delimiter=",", headers=TRUE)
 
 # add unobserved hidden state
 data_exp <- data.expandCharacters( 2 )
@@ -144,6 +144,6 @@ pow_p.burnin(generations=100, tuningInterval=10)
 pow_p.run(generations=100)
 ss = steppingStoneSampler(file=base_dir + "output/dependent" + rep + ".out", powerColumnName="power", likelihoodColumnName="likelihood")
 ss.marginal()
-
+write(ss.marginal(), filename=base_dir + "bf_dependent.tsv", append=TRUE, separator="\t")
 q()
 

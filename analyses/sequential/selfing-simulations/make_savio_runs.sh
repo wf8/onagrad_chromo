@@ -4,7 +4,7 @@
 rm -rf runs
 mkdir runs
 
-for rep in {1..100}
+for rep in {1..400}
 do
 
     # base_dir = "/global/scratch/freyman/projects/onagrad_chromo/analyses/sequential/selfing-simulations/"
@@ -18,7 +18,7 @@ do
     
 done
 
-for job in {0..4}
+for job in {0..19}
 do
 
 echo "#!/bin/bash
