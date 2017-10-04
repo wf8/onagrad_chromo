@@ -2,6 +2,8 @@
 
 #base_dir = ""
 sample_freq = 1
+setOption("useScaling","true")
+setOption("scalingDensity","1")
 
 # set my move index
 mvi = 1
