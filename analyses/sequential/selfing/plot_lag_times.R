@@ -9,7 +9,7 @@
 library(coda)
 library(ggplot2)
 
-input_file = "output-lognormal/events.tsv"
+input_file = "output/events.tsv"
 
 # recursive function to traverse up tree towards
 # root looking for time of loss of self-incompatibility
@@ -66,6 +66,7 @@ p = ggplot(df, aes(x=x)) + geom_histogram(aes(y=..density..), binwidth=1, colour
 p = p + geom_density(alpha=0.4, adjust=2, colour="black", fill="honeydew4")
 p = p + geom_vline(xintercept=mean_lag, linetype="dashed", colour="black")
 p = p + labs(x="Millions of Years", y="Density")
+p = p + theme_minimal()
 print(p)
 
 
